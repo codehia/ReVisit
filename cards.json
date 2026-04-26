@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1",
+    "topic": "Distributed Systems",
+    "question": "What is consistent hashing and why is it used?",
+    "answer": "Consistent hashing maps both keys and nodes onto a ring. Each key is assigned to the nearest node clockwise. When a node is added or removed, only k/n keys need remapping instead of all of them. Used in distributed caches like Redis Cluster and Cassandra to minimize reshuffling during scaling.",
+    "interval": 1,
+    "next_review": "2026-04-26T00:00:00Z"
+  },
+  {
+    "id": "2",
+    "topic": "Databases",
+    "question": "What is the difference between a read replica and a standby replica?",
+    "answer": "A read replica accepts read traffic to offload the primary, but may serve slightly stale data due to replication lag. A standby replica receives the same writes as the primary but serves no traffic - it exists purely for failover. Read replicas scale read throughput; standbys improve availability.",
+    "interval": 1,
+    "next_review": "2026-04-26T00:00:00Z"
+  },
+  {
+    "id": "3",
+    "topic": "Networking",
+    "question": "What does a CDN actually do and when would you not use one?",
+    "answer": "A CDN caches static assets at edge nodes geographically close to users, reducing latency and origin load. You would skip one for highly dynamic or personalised content that cannot be cached, for internal tools where users are in one location, or when data residency rules prevent distribution across regions.",
+    "interval": 1,
+    "next_review": "2026-04-26T00:00:00Z"
+  },
+  {
+    "id": "4",
+    "topic": "Databases",
+    "question": "What is the CAP theorem and what does it actually mean in practice?",
+    "answer": "CAP states a distributed system can only guarantee two of: Consistency (every read sees the latest write), Availability (every request gets a response), Partition tolerance (system works despite network splits). Since partitions are unavoidable in real networks, the real choice is CP vs AP - whether you favour consistency or availability when a partition occurs.",
+    "interval": 1,
+    "next_review": "2026-04-26T00:00:00Z"
+  },
+  {
+    "id": "5",
+    "topic": "System Design",
+    "question": "What is the difference between horizontal and vertical scaling, and what are the limits of each?",
+    "answer": "Vertical scaling adds more resources to a single machine - faster CPU, more RAM. It is simple but has a hard ceiling and creates a single point of failure. Horizontal scaling adds more machines and distributes load across them. It scales further but introduces complexity around state management, load balancing, and data consistency.",
+    "interval": 1,
+    "next_review": "2026-04-26T00:00:00Z"
+  }
+]
