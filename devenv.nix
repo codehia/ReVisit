@@ -1,5 +1,5 @@
 { pkgs, ... }: {
-  packages = [ pkgs.git ];
+  packages = with pkgs; [ git gofumpt ];
   languages = {
     go.enable = true;
     nix.enable = true;
