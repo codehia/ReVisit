@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	Model           = "deepseek-v4-pro"
+	Model           = "deepseek-v4-flash"
 	ReasoningEffort = "medium"
 	Stream          = false
 	SystemPrompt    = `
@@ -95,6 +95,60 @@ type requestPayload struct {
 type message struct {
 	Role    string `json:"role"` // check if this can be limited to a set of options
 	Content string `json:"content"`
+}
+
+type Card struct {
+	Question  string `json:"question"`
+	Answer    string `json:"answer"`
+	Examples  string `json:"examples"`
+	TradeOffs string `json:"tradeoffs"`
+	CardType  string `json:"card_type"`
+}
+
+func (c Card) validate() (bool, error) {
+	validCardTypes := map[string]bool{
+		"definition":  true,
+		"mechanism":   true,
+		"tradeoff":    true,
+		"application": true,
+	}
+	if c.Question == "" {
+		return false, errors.New("missing question")
+	} else if c.Answer == "" {
+		return false, errors.New("missing answer")
+	} else if !validCardTypes[c.CardType] {
+		return false, errors.New("invalid card type")
+	}
+	return true, nil
+}
+
+type Response struct {
+	Tag       string `json:"tag"`
+	ParentTag string `json:"parent_tag"`
+	RootTag   string `json:"root_tag"`
+	Cards     []Card `json:"cards"`
+}
+
+func (r Response) validate() (bool, error) {
+	if r.Tag == "" {
+		return false, errors.New("tag field is empty")
+	} else if r.RootTag == "" {
+		return false, errors.New("root_tag field is empty")
+	} else if r.ParentTag == "" {
+		return false, errors.New("parent_tag field is empty")
+	} else if len(r.Cards) == 0 {
+		return false, errors.New("cards field is empty")
+	}
+	return true, nil
+}
+
+type Choice struct {
+	Index   int        `json:"index"`
+	Message []Response `json:"message"`
+}
+
+type APIResponse struct {
+	Choices []Choice `json:"choices"`
 }
 
 func newMessage(content string, role string) (message, error) {
@@ -243,13 +297,59 @@ func makeRequest(payloadData requestPayload) {
 		fmt.Println("Error reading response body", err)
 		os.Exit(1)
 	}
+	validateResponse(body)
 
-	var pretty bytes.Buffer
-	if err := json.Indent(&pretty, body, "", "  "); err != nil {
-		fmt.Println(string(body))
-		return
+	// var pretty bytes.Buffer
+	// if err := json.Indent(&pretty, body, "", "  "); err != nil {
+	// 	fmt.Println(string(body))
+	// 	return
+	// }
+	// fmt.Println(pretty.String())
+}
+
+/*
+
+[
+	  {
+	    "tag": "<leaf concept name>",
+	    "parent_tag": "<immediate parent>",
+	    "root_tag": "<top-level branch>",
+	    "cards": [
+	      {
+	        "question": "...",
+	        "answer": "...",
+	        "examples": "...",
+	        "tradeoffs": "...",
+	        "card_type": "definition | mechanism | tradeoff | application"
+	      }
+	    ]
+	  }
+	]
+*/
+
+func validateResponse(response []byte) (bool, error) {
+	apiResponse := APIResponse{}
+	if err := json.Unmarshal(response, &apiResponse); err != nil {
+		return false, err
 	}
-	fmt.Println(pretty.String())
+
+	for _, choice := range apiResponse.Choices {
+		contents := choice.Message
+		for _, content := range contents {
+			valid, err := content.validate()
+			if err != nil {
+				return valid, err
+			}
+			for _, card := range content.Cards {
+				valid, err := card.validate()
+				if err != nil {
+					return valid, err
+				}
+			}
+		}
+
+	}
+	return true, nil
 }
 
 func main() {
