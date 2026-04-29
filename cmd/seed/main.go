@@ -17,70 +17,52 @@ import (
 )
 
 var (
-	logger, _ = zap.NewDevelopment()
-	sugar     = logger.Sugar()
+	logger, _    = zap.NewDevelopment()
+	sugar        = logger.Sugar()
+	systemPrompt string
 )
 
 const (
 	Model           = "deepseek-v4-flash"
 	ReasoningEffort = "medium"
 	Stream          = false
-	SystemPrompt    = `
-		You are a senior backend engineer and educator generating flashcards for
-		system design interview preparation. Your audience is experienced software
-		engineers preparing for senior-level interviews.
-
-		OUTPUT RULES:
-			- Respond ONLY with valid JSON. No preamble, no markdown fences, no commentary.
-			- Match the response shape exactly. Do not add or rename fields.
-
-		CARD QUALITY RULES:
-			- Each card covers exactly one atomic concept. If a topic has multiple ideas, produce multiple cards.
-			- Questions are specific and unambiguous. Prefer "Why X over Y in scenario Z" over "What is X".
-			- Answers are accurate, current, and complete enough to stand alone.
-			- Examples reference real systems with concrete details (Postgres, Cassandra, Kafka, DynamoDB, etc.). No vague "many databases".
-			- Tradeoffs are honest: include when NOT to use something.
-			- card_type must be one of: definition, mechanism, tradeoff, application.
-
-		AUTHORITY ANCHORS:
-			- For storage, indexing, replication, transactions: frame as Designing Data-Intensive Applications (Kleppmann) does.
-			- For end-to-end system design and estimation: frame as Alex Xu's System Design Interview does.
-
-		RESPONSE SHAPE:
-			[
-			  {
-			    "tag": "<leaf concept name>",
-			    "parent_tag": "<immediate parent>",
-			    "root_tag": "<top-level branch>",
-			    "cards": [
-			      {
-			        "question": "...",
-			        "answer": "...",
-			        "examples": "...",
-			        "tradeoffs": "...",
-			        "card_type": "definition | mechanism | tradeoff | application"
-			      }
-			    ]
-			  }
-			]
-
-		EXAMPLE OF A GOOD CARD (do not include this in output, this is for reference):
-			{
-			  "question": "Why does Postgres use B-trees as the default index type?",
-			  "answer": "B-trees provide O(log n) lookups and efficient range scans on
-			    disk-based storage, which match the most common OLTP query patterns:
-			    equality lookups (WHERE id = ?) and range scans (WHERE created_at
-			    BETWEEN ? AND ?). B-trees update in place on fixed-size pages, which
-			    fits Postgres's page-oriented storage engine.",
-			  "examples": "Postgres CREATE INDEX defaults to btree. MySQL InnoDB stores
-			    the primary key as a clustered B-tree. SQLite also uses B-trees.",
-			  "tradeoffs": "B-trees degrade for write-heavy workloads with random keys
-			    due to page splits; LSM-trees are better there (RocksDB, Cassandra).
-			    B-trees do poorly on full-text search; use GIN/inverted indexes
-			    (Elasticsearch). Every B-tree index is a copy of the indexed columns,
-			    consuming significant disk.",
-			  "card_type": "mechanism"
-			}
+	fakeUserPrompt  = `
+		Generate flashcards for the following hierarchy. For each leaf, fully
+		decompose the concept into its atomic ideas and generate one card per
+		atomic idea.
+		
+		Root: Caching
+		
+		Caching
+		  └── TTL
+		    Anchor: TTL (time-to-live) eviction associates each cache entry with
+		    an expiration timestamp. Once the timestamp passes, the entry is
+		    treated as invalid: either purged eagerly by a background sweeper or
+		    lazily on the next read. TTL is independent of access patterns, unlike
+		    LRU or LFU. Redis EXPIRE and SET with EX option. Memcached entries
+		    take an explicit TTL. CDN cache headers (Cache-Control: max-age)
+		    implement TTL at the HTTP layer.
+	`
+	assistantPrompt = `
+	{
+	   "entries":[
+	    {"tag":"TTL","tag_path":["Caching","Cache Eviction Policies"],
+	   "cards":[ 
+		{"question":"What is TTL-based cache eviction and how does it work?",
+		 "answer":"TTL eviction associates each cache entry with an expiration timestamp. Once the timestamp passes the entry is invalid, purged either eagerly by a background sweeper or lazily on the next read. TTL is independent of access patterns unlike LRU or LFU, meaning a hot entry will still be evicted once it expires.",
+		 "examples":"Redis EXPIRE and SET with EX option. Memcached entries take an explicit TTL. CDN cache headers (Cache-Control: max-age) implement TTL at the HTTP layer.",
+		 "tradeoffs":"TTL is simple and predictable but evicts entries even when still hot, and keeps cold entries until they expire. Combine with LRU when both freshness and access patterns matter.",
+		 "card_type":"definition"}, 
+		{"question":"How does Redis implement TTL expiry internally?",
+		 "answer":"Redis uses two strategies combined. Lazy expiry: when a key is accessed Redis checks if it has expired and deletes it before returning. Active expiry: a periodic background job samples random keys with TTLs and deletes expired ones. This hybrid avoids scanning all keys while still reclaiming memory from unaccessed expired entries.","examples":"Redis commands: EXPIRE key seconds, PEXPIRE key milliseconds, TTL key to inspect remaining time.",
+		 "tradeoffs":"The sampling approach means expired but unaccessed keys can linger and consume memory. Under heavy expiry load the background job can cause latency spikes.",
+		 "card_type":"mechanism"}, 
+		{"question":"When would you choose TTL eviction over LRU?",
+		 "answer":"Use TTL when correctness depends on freshness: session tokens, rate limit counters, DNS records, or pricing data that must not be served stale. Also when downstream contracts dictate expiry via HTTP Cache-Control headers or CDN edge caches. Use LRU when the goal is keeping the working set in memory regardless of age and stale data is acceptable.",
+		 "examples":"Session stores in Redis use TTL matching the session lifetime. Rate limiters use short TTL windows (1s, 1m). Application data caches typically prefer LRU.",
+		 "tradeoffs":"","card_type":"tradeoff"}]}
+	   ]
+	}
 	`
 )
 
@@ -101,7 +83,7 @@ type requestPayload struct {
 }
 
 type message struct {
-	Role    string `json:"role"` // check if this can be limited to a set of options
+	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
@@ -134,23 +116,23 @@ func (c Card) validate() (bool, error) {
 }
 
 type Response struct {
-	Tag       string `json:"tag"`
-	ParentTag string `json:"parent_tag"`
-	RootTag   string `json:"root_tag"`
-	Cards     []Card `json:"cards"`
+	Tag     string   `json:"tag"`
+	TagPath []string `json:"tag_path"`
+	Cards   []Card   `json:"cards"`
+}
+
+type entriesWrapper struct {
+	Entries []Response `json:"entries"`
 }
 
 func (r Response) validate() (bool, error) {
 	if r.Tag == "" {
 		return false, errors.New("tag field is empty")
-	} else if r.RootTag == "" {
-		return false, errors.New("root_tag field is empty")
-	} else if r.ParentTag == "" {
-		return false, errors.New("parent_tag field is empty")
+	} else if len(r.TagPath) == 0 {
+		return false, errors.New("tag_path field is empty")
 	} else if len(r.Cards) == 0 {
 		return false, errors.New("cards field is empty")
 	}
-
 	for _, card := range r.Cards {
 		_, err := card.validate()
 		if err != nil {
@@ -158,10 +140,6 @@ func (r Response) validate() (bool, error) {
 		}
 	}
 	return true, nil
-}
-
-type ResponseMessage struct {
-	Content []Response `json:"content"`
 }
 
 type Choice struct {
@@ -194,7 +172,7 @@ func newRequestPayload(messages []message) (requestPayload, error) {
 	return requestPayload{
 		Model:          Model,
 		Temperature:    0.0,
-		MaxTokens:      8000,
+		MaxTokens:      32000,
 		ResponseFormat: responseFormat,
 		Messages:       messages,
 		Thinking:       thinking,
@@ -255,12 +233,20 @@ func formatSubtrees(node Node) string {
 }
 
 func createUserMessage(node Node) (message, error) {
-	content := formatSubtrees(node)
+	content := "Generate flashcards for the following hierarchy. For each leaf, fully decompose the concept into its atomic ideas and generate one card per atomic idea. An atomic idea is one that cannot be meaningfully split further without losing context.\n\n" + formatSubtrees(node)
 	return newMessage(content, "user")
 }
 
+func createFakeUserMessage() (message, error) {
+	return newMessage(fakeUserPrompt, "user")
+}
+
+func createAssistantMessage() (message, error) {
+	return newMessage(assistantPrompt, "assistant")
+}
+
 func createSystemMessage() (message, error) {
-	return newMessage(SystemPrompt, "system")
+	return newMessage(systemPrompt, "system")
 }
 
 func createPayload(node Node) (requestPayload, error) {
@@ -272,8 +258,16 @@ func createPayload(node Node) (requestPayload, error) {
 	if err != nil {
 		return requestPayload{}, err
 	}
+	fakeUserMessage, err := createFakeUserMessage()
+	if err != nil {
+		return requestPayload{}, err
+	}
+	assistantMessage, err := createAssistantMessage()
+	if err != nil {
+		return requestPayload{}, err
+	}
 
-	messages := []message{systemMessage, userMessage}
+	messages := []message{systemMessage, fakeUserMessage, assistantMessage, userMessage}
 	payload, err := newRequestPayload(messages)
 	if err != nil {
 		return requestPayload{}, err
@@ -326,6 +320,9 @@ func makeRequest(payloadData requestPayload, results chan<- []Response, retry ch
 
 	responses, err := validateResponse(body)
 	if err != nil {
+		var pretty bytes.Buffer
+		json.Indent(&pretty, body, "", " ")
+		os.WriteFile("raw_response.json", pretty.Bytes(), 0o644)
 		sugar.Warnw("validation failed, retrying", "error", err)
 		retry <- payloadData
 		return
@@ -343,19 +340,16 @@ func validateResponse(response []byte) ([]Response, error) {
 	var responses []Response
 
 	for _, choice := range apiResponse.Choices {
-		contents := choice.Message.Content
-		var contentResponses []Response
-		err := json.Unmarshal([]byte(contents), &contentResponses)
-		if err != nil {
+		var wrapper entriesWrapper
+		if err := json.Unmarshal([]byte(choice.Message.Content), &wrapper); err != nil {
 			return nil, err
 		}
-		for _, response := range contentResponses {
-			_, err := response.validate()
-			if err != nil {
+		for _, response := range wrapper.Entries {
+			if _, err := response.validate(); err != nil {
 				return nil, err
 			}
 		}
-		responses = append(responses, contentResponses...)
+		responses = append(responses, wrapper.Entries...)
 
 	}
 	return responses, nil
@@ -363,6 +357,11 @@ func validateResponse(response []byte) ([]Response, error) {
 
 func main() {
 	defer logger.Sync()
+	data, err := os.ReadFile("systemPrompt.txt")
+	if err != nil {
+		sugar.Errorw("failed to load the systemPrompt file", err)
+	}
+	systemPrompt = string(data)
 
 	children := os.Args[1:]
 	if len(children) == 0 {
@@ -418,12 +417,37 @@ func main() {
 
 func writeToResultJson(path string, results []Response) {
 	sugar.Infow("writing results to file", "path", path, "count", len(results))
-	data, err := json.MarshalIndent(results, "", " ")
-	if err != nil {
-		sugar.Errorw("failed to marshal results", "error", err)
+	data, err := os.ReadFile(path)
+
+	if err == nil && len(data) > 0 {
+		var outputData []Response
+		error := json.Unmarshal(data, &outputData)
+		if error != nil {
+			sugar.Errorw("error reading file", "path", path, "error", error)
+			return
+		}
+		results = append(results, outputData...)
+
+		seen := map[string]bool{}
+		var distinct []Response
+		for _, r := range results {
+			key, _ := json.Marshal(r)
+			if !seen[string(key)] {
+				seen[string(key)] = true
+				distinct = append(distinct, r)
+			}
+		}
+		results = distinct
+
+	}
+
+	marshaledResultData, marshalError := json.MarshalIndent(results, "", " ")
+	if marshalError != nil {
+		sugar.Errorw("failed to marshal results", "error", marshalError)
 		return
 	}
-	err = os.WriteFile(path, data, 0o644)
+
+	err = os.WriteFile(path, marshaledResultData, 0o644)
 	if err != nil {
 		sugar.Errorw("failed to write file", "path", path, "error", err)
 		return
