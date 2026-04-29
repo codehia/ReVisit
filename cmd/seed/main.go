@@ -72,6 +72,11 @@ type Node struct {
 	Children []Node `json:"children,omitempty"`
 }
 
+type LeafNode struct {
+	Node
+	Path string
+}
+
 type requestPayload struct {
 	Model          string            `json:"model"`
 	Temperature    float64           `json:"temperature"`
@@ -194,6 +199,22 @@ func getRootNode(path string) (Node, error) {
 	return root, nil
 }
 
+func getLeafNodes(node Node, path string) []LeafNode {
+	if path == "" {
+		path = node.Name
+	} else {
+		path = path + " > " + node.Name
+	}
+	if len(node.Children) == 0 {
+		return []LeafNode{{Node: node, Path: path}}
+	}
+	var leaves []LeafNode
+	for _, child := range node.Children {
+		leaves = append(leaves, getLeafNodes(child, path)...)
+	}
+	return leaves
+}
+
 func findChildrenNodes(node Node, childrenNames []string) []Node {
 	var childrenNodes []Node
 	for _, child := range node.Children {
@@ -232,8 +253,8 @@ func formatSubtrees(node Node) string {
 	return sb.String()
 }
 
-func createUserMessage(node Node) (message, error) {
-	content := "Generate flashcards for the following hierarchy. For each leaf, fully decompose the concept into its atomic ideas and generate one card per atomic idea. An atomic idea is one that cannot be meaningfully split further without losing context.\n\n" + formatSubtrees(node)
+func createUserMessage(leaf LeafNode) (message, error) {
+	content := fmt.Sprintf("Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea.\n\nConcept: %s\nTag path: %s\nAnchor: %s", leaf.Name, leaf.Path, leaf.Notes)
 	return newMessage(content, "user")
 }
 
@@ -249,7 +270,7 @@ func createSystemMessage() (message, error) {
 	return newMessage(systemPrompt, "system")
 }
 
-func createPayload(node Node) (requestPayload, error) {
+func createPayload(node LeafNode) (requestPayload, error) {
 	systemMessage, err := createSystemMessage()
 	if err != nil {
 		return requestPayload{}, err
@@ -376,14 +397,18 @@ func main() {
 	}
 
 	childrenNodes := findChildrenNodes(root, children)
-	sugar.Infow("found nodes", "count", len(childrenNodes))
+	var leafNodes []LeafNode
+	for _, node := range childrenNodes {
+		leafNodes = append(leafNodes, getLeafNodes(node, "")...)
+	}
+	sugar.Infow("found leaf nodes", "count", len(leafNodes))
 
 	results := make(chan []Response)
 	retry := make(chan requestPayload)
 
 	var wg sync.WaitGroup
-	wg.Add(len(childrenNodes))
-	for _, node := range childrenNodes {
+	wg.Add(len(leafNodes))
+	for _, node := range leafNodes {
 		payload, err := createPayload(node)
 		if err != nil {
 			sugar.Errorw("failed to create payload", "node", node.Name, "error", err)
