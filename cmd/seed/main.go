@@ -9,23 +9,24 @@ import (
 	"net/http"
 	"os"
 	"slices"
-	"strings"
 	"sync"
+	"time"
 
+	"github.com/codehia/goflash/internal/types"
 	"go.uber.org/zap"
 )
 
 var (
-	logger, _    = zap.NewDevelopment()
+	logger       = zap.Must(zap.NewDevelopment())
 	sugar        = logger.Sugar()
 	systemPrompt string
+	httpClient   = &http.Client{Timeout: 72 * time.Second}
 )
 
 const (
-	Model           = "deepseek-v4-flash"
-	ReasoningEffort = "medium"
-	Stream          = false
-	fakeUserPrompt  = `
+	Model          = "deepseek-v4-flash"
+	Stream         = false
+	fakeUserPrompt = `
 		Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea.
 		Use the tag and tag_path exactly as given - do not modify them or create new tags.
 
@@ -59,14 +60,13 @@ const (
 	`
 )
 
-type Node struct {
-	Name     string `json:"name"`
-	Notes    string `json:"notes,omitempty"`
-	Children []Node `json:"children,omitempty"`
+type config struct {
+	APIKey  string
+	BaseURL string
 }
 
 type LeafNode struct {
-	Node
+	types.Node
 	Path string
 }
 
@@ -85,59 +85,8 @@ type message struct {
 	Content string `json:"content"`
 }
 
-type Card struct {
-	Question  string `json:"question"`
-	Answer    string `json:"answer"`
-	Examples  string `json:"examples"`
-	TradeOffs string `json:"tradeoffs"`
-	CardType  string `json:"card_type"`
-}
-
-func (c Card) validate() (bool, error) {
-	validCardTypes := map[string]bool{
-		"definition":  true,
-		"mechanism":   true,
-		"tradeoff":    true,
-		"application": true,
-	}
-	if c.Question == "" {
-		sugar.Warnw("card validation failed", "reason", "missing question")
-		return false, errors.New("missing question")
-	} else if c.Answer == "" {
-		sugar.Warnw("card validation failed", "reason", "missing answer")
-		return false, errors.New("missing answer")
-	} else if !validCardTypes[c.CardType] {
-		sugar.Warnw("card validation failed", "reason", "invalid card type", "card_type", c.CardType)
-		return false, errors.New("invalid card type")
-	}
-	return true, nil
-}
-
-type Response struct {
-	Tag     string   `json:"tag"`
-	TagPath []string `json:"tag_path"`
-	Cards   []Card   `json:"cards"`
-}
-
 type entriesWrapper struct {
-	Entries []Response `json:"entries"`
-}
-
-func (r Response) validate() (bool, error) {
-	if r.Tag == "" {
-		return false, errors.New("tag field is empty")
-	} else if len(r.TagPath) == 0 {
-		return false, errors.New("tag_path field is empty")
-	} else if len(r.Cards) == 0 {
-		return false, errors.New("cards field is empty")
-	}
-	for _, card := range r.Cards {
-		_, err := card.validate()
-		if err != nil {
-			return false, err
-		}
-	}
-	return true, nil
+	Entries []types.Response `json:"entries"`
 }
 
 type Choice struct {
@@ -178,21 +127,21 @@ func newRequestPayload(messages []message) (requestPayload, error) {
 	}, nil
 }
 
-func getRootNode(path string) (Node, error) {
+func getRootNode(path string) (types.Node, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return Node{}, errors.New("error reading file")
+		return types.Node{}, fmt.Errorf("getRootNode: read %q: %w", path, err)
 	}
 
-	var root Node
+	var root types.Node
 	if err := json.Unmarshal(data, &root); err != nil {
-		return Node{}, errors.New("parsing json failed")
+		return types.Node{}, fmt.Errorf("getRootNode: parse json: %w", err)
 	}
 
 	return root, nil
 }
 
-func getLeafNodes(node Node, path string) []LeafNode {
+func getLeafNodes(node types.Node, path string) []LeafNode {
 	if len(node.Children) == 0 {
 		return []LeafNode{{Node: node, Path: path}}
 	}
@@ -209,42 +158,14 @@ func getLeafNodes(node Node, path string) []LeafNode {
 	return leaves
 }
 
-func findChildrenNodes(node Node, childrenNames []string) []Node {
-	var childrenNodes []Node
+func findChildrenNodes(node types.Node, childrenNames []string) []types.Node {
+	var childrenNodes []types.Node
 	for _, child := range node.Children {
 		if slices.Contains(childrenNames, child.Name) {
 			childrenNodes = append(childrenNodes, child)
 		}
 	}
 	return childrenNodes
-}
-
-func formatNode(node Node, depth int) string {
-	indent := strings.Repeat("  ", depth)
-	var sb strings.Builder
-
-	if depth == 0 {
-		fmt.Fprintf(&sb, "%s\n", node.Name)
-	} else {
-		fmt.Fprintf(&sb, "%s└── %s\n", indent, node.Name)
-	}
-
-	if node.Notes != "" {
-		fmt.Fprintf(&sb, "%s  Anchor: %s\n\n", indent, node.Notes)
-	}
-
-	for _, child := range node.Children {
-		sb.WriteString(formatNode(child, depth+1))
-	}
-
-	return sb.String()
-}
-
-func formatSubtrees(node Node) string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "Root: %s\nSubtree:\n\n", node.Name)
-	sb.WriteString(formatNode(node, 0))
-	return sb.String()
 }
 
 func createUserMessage(leaf LeafNode) (message, error) {
@@ -297,20 +218,8 @@ func createPayload(node LeafNode) (requestPayload, error) {
 	return payload, nil
 }
 
-func makeRequest(payloadData requestPayload, results chan<- []Response, retry chan<- requestPayload, wg *sync.WaitGroup) {
+func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.Response, retry chan<- requestPayload, wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	apiKey := os.Getenv("DEEPSEEK_API_KEY")
-	baseUrl := os.Getenv("DEEPSEEK_BASE_URL")
-
-	if apiKey == "" {
-		sugar.Errorw("DEEPSEEK_API_KEY is not set")
-		return
-	}
-	if baseUrl == "" {
-		sugar.Errorw("DEEPSEEK_BASE_URL is not set")
-		return
-	}
 
 	payload, err := json.Marshal(payloadData)
 	if err != nil {
@@ -319,18 +228,22 @@ func makeRequest(payloadData requestPayload, results chan<- []Response, retry ch
 	}
 
 	sugar.Infow("sending request", "model", payloadData.Model)
-	req, _ := http.NewRequest("POST", baseUrl, bytes.NewReader(payload))
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req, err := http.NewRequest("POST", cfg.BaseURL, bytes.NewReader(payload))
+	if err != nil {
+		sugar.Errorw("failed to create requrest", "error", err)
+		retry <- payloadData
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		sugar.Warnw("http request failed, retrying", "error", err)
 		retry <- payloadData
 		return
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -341,9 +254,6 @@ func makeRequest(payloadData requestPayload, results chan<- []Response, retry ch
 
 	responses, err := validateResponse(body)
 	if err != nil {
-		var pretty bytes.Buffer
-		json.Indent(&pretty, body, "", " ")
-		os.WriteFile("raw_response.json", pretty.Bytes(), 0o644)
 		sugar.Warnw("validation failed, retrying", "error", err)
 		retry <- payloadData
 		return
@@ -353,20 +263,24 @@ func makeRequest(payloadData requestPayload, results chan<- []Response, retry ch
 	results <- responses
 }
 
-func validateResponse(response []byte) ([]Response, error) {
+func validateResponse(response []byte) ([]types.Response, error) {
 	apiResponse := APIResponse{}
 	if err := json.Unmarshal(response, &apiResponse); err != nil {
 		return nil, err
 	}
-	var responses []Response
+	if len(apiResponse.Choices) == 0 {
+		return nil, fmt.Errorf("API returned no choices, body: %s", string(response))
+	}
+
+	var responses []types.Response
 
 	for _, choice := range apiResponse.Choices {
 		var wrapper entriesWrapper
 		if err := json.Unmarshal([]byte(choice.Message.Content), &wrapper); err != nil {
 			return nil, err
 		}
-		for _, response := range wrapper.Entries {
-			if _, err := response.validate(); err != nil {
+		for _, entry := range wrapper.Entries {
+			if err := entry.Validate(); err != nil {
 				return nil, err
 			}
 		}
@@ -376,13 +290,71 @@ func validateResponse(response []byte) ([]Response, error) {
 	return responses, nil
 }
 
-func main() {
-	defer logger.Sync()
-	data, err := os.ReadFile("systemPrompt.txt")
-	if err != nil {
-		sugar.Errorw("failed to load the systemPrompt file", err)
+func writeToResultJson(path string, results []types.Response) {
+	sugar.Infow("writing results to file", "path", path, "count", len(results))
+	jsonFileData, err := os.ReadFile(path)
+
+	if err == nil && len(jsonFileData) > 0 {
+		var responsesFromJson []types.Response
+		err := json.Unmarshal(jsonFileData, &responsesFromJson)
+		if err != nil {
+			sugar.Errorw("error reading file", "path", path, "error", err)
+			return
+		}
+		results = append(results, responsesFromJson...)
+
+		seen := map[string]bool{}
+		var distinct []types.Response
+		for _, result := range results {
+			key, err := json.Marshal(result)
+			if err != nil {
+				sugar.Errorw("failed to marshal response for dedup", "tag", result.Tag, "error", err)
+				continue
+			}
+			if !seen[string(key)] {
+				seen[string(key)] = true
+				distinct = append(distinct, result)
+			}
+		}
+		results = distinct
+
 	}
-	systemPrompt = string(data)
+
+	marshaledResultData, err := json.MarshalIndent(results, "", " ")
+	if err != nil {
+		sugar.Errorw("failed to marshal results", "error", err)
+		return
+	}
+
+	err = os.WriteFile(path, marshaledResultData, 0o644)
+	if err != nil {
+		sugar.Errorw("failed to write file", "path", path, "error", err)
+		return
+	}
+	sugar.Infow("results written successfully", "path", path)
+}
+
+func main() {
+	defer logger.Sync() //nolint:errcheck
+	cfg := config{
+		APIKey:  os.Getenv("DEEPSEEK_API_KEY"),
+		BaseURL: os.Getenv("DEEPSEEK_BASE_URL"),
+	}
+	if cfg.APIKey == "" {
+		sugar.Errorw("DEEPSEEK_API_KEY is not set")
+		os.Exit(1)
+	}
+	if cfg.BaseURL == "" {
+		sugar.Errorw("DEEPSEEK_BASE_URL is not set")
+		os.Exit(1)
+	}
+
+	systemPromptFileData, err := os.ReadFile("systemPrompt.txt")
+	if err != nil {
+		sugar.Errorw("failed to load the systemPrompt", "error", err)
+		os.Exit(1)
+	}
+	systemPrompt = string(systemPromptFileData)
 
 	children := os.Args[1:]
 	if len(children) == 0 {
@@ -390,9 +362,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	root, error := getRootNode("system-design-hierarchy.json")
-	if error != nil {
-		sugar.Errorw("failed to read root node", "error", error)
+	root, err := getRootNode("system-design-hierarchy.json")
+	if err != nil {
+		sugar.Errorw("failed to read root node", "error", err)
 		os.Exit(1)
 	}
 
@@ -401,13 +373,16 @@ func main() {
 	for _, node := range childrenNodes {
 		leafNodes = append(leafNodes, getLeafNodes(node, "")...)
 	}
+	if len(leafNodes) == 0 {
+		sugar.Errorw("no matching nodes found", "args", children)
+		os.Exit(1)
+	}
 	sugar.Infow("found leaf nodes", "count", len(leafNodes))
 
-	results := make(chan []Response)
+	results := make(chan []types.Response)
 	retry := make(chan requestPayload)
 
 	var wg sync.WaitGroup
-	wg.Add(len(leafNodes))
 	for _, node := range leafNodes {
 		payload, err := createPayload(node)
 		if err != nil {
@@ -415,7 +390,8 @@ func main() {
 			continue
 		}
 		sugar.Infow("launching request", "node", node.Name)
-		go makeRequest(payload, results, retry, &wg)
+		wg.Add(1) // only count goroutines that actually launch
+		go makeRequest(payload, cfg, results, retry, &wg)
 	}
 
 	go func() {
@@ -432,50 +408,10 @@ func main() {
 		}
 	}()
 
-	var collected []Response
+	var collected []types.Response
 	for r := range results {
 		collected = append(collected, r...)
 	}
 	sugar.Infow("collection complete", "total_responses", len(collected))
 	writeToResultJson("output.json", collected)
-}
-
-func writeToResultJson(path string, results []Response) {
-	sugar.Infow("writing results to file", "path", path, "count", len(results))
-	data, err := os.ReadFile(path)
-
-	if err == nil && len(data) > 0 {
-		var outputData []Response
-		error := json.Unmarshal(data, &outputData)
-		if error != nil {
-			sugar.Errorw("error reading file", "path", path, "error", error)
-			return
-		}
-		results = append(results, outputData...)
-
-		seen := map[string]bool{}
-		var distinct []Response
-		for _, r := range results {
-			key, _ := json.Marshal(r)
-			if !seen[string(key)] {
-				seen[string(key)] = true
-				distinct = append(distinct, r)
-			}
-		}
-		results = distinct
-
-	}
-
-	marshaledResultData, marshalError := json.MarshalIndent(results, "", " ")
-	if marshalError != nil {
-		sugar.Errorw("failed to marshal results", "error", marshalError)
-		return
-	}
-
-	err = os.WriteFile(path, marshaledResultData, 0o644)
-	if err != nil {
-		sugar.Errorw("failed to write file", "path", path, "error", err)
-		return
-	}
-	sugar.Infow("results written successfully", "path", path)
 }
