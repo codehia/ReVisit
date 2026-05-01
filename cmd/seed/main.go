@@ -219,19 +219,20 @@ func createPayload(node LeafNode) (requestPayload, error) {
 }
 
 func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.Response, retry chan<- requestPayload, wg *sync.WaitGroup) {
-	defer wg.Done()
-
 	payload, err := json.Marshal(payloadData)
 	if err != nil {
 		sugar.Errorw("marshalling payload failed", "error", err)
+		wg.Done()
 		return
 	}
 
 	sugar.Infow("sending request", "model", payloadData.Model)
 	req, err := http.NewRequest("POST", cfg.BaseURL, bytes.NewReader(payload))
 	if err != nil {
-		sugar.Errorw("failed to create requrest", "error", err)
+		sugar.Errorw("failed to create request", "error", err)
+		wg.Add(1)
 		retry <- payloadData
+		wg.Done()
 		return
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
@@ -240,7 +241,9 @@ func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		sugar.Warnw("http request failed, retrying", "error", err)
+		wg.Add(1)
 		retry <- payloadData
+		wg.Done()
 		return
 	}
 	defer resp.Body.Close() //nolint:errcheck
@@ -248,19 +251,24 @@ func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		sugar.Warnw("reading response body failed, retrying", "error", err)
+		wg.Add(1)
 		retry <- payloadData
+		wg.Done()
 		return
 	}
 
 	responses, err := validateResponse(body)
 	if err != nil {
 		sugar.Warnw("validation failed, retrying", "error", err)
+		wg.Add(1)
 		retry <- payloadData
+		wg.Done()
 		return
 	}
 
 	sugar.Infow("request successful", "responses", len(responses))
 	results <- responses
+	wg.Done()
 }
 
 func validateResponse(response []byte) ([]types.Response, error) {
@@ -403,8 +411,9 @@ func main() {
 	go func() {
 		for r := range retry {
 			sugar.Infow("retrying request", "model", r.Model)
-			// wg.Add(1)
-			// go makeRequest(r, results, retry, &wg)
+			// TODO: no retry limit — a permanently failing request retries forever.
+			// Fix: track attempt count per payload and drop after N retries.
+			go makeRequest(r, cfg, results, retry, &wg)
 		}
 	}()
 

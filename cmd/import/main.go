@@ -16,7 +16,6 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 )
 
-
 func stringPtrEqual(a, b *string) bool {
 	if a == nil && b == nil {
 		return true
