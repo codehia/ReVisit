@@ -17,14 +17,17 @@ type cardsTable struct {
 	sqlite.Table
 
 	// Columns
-	ID        sqlite.ColumnString
-	Question  sqlite.ColumnString
-	Answer    sqlite.ColumnString
-	Examples  sqlite.ColumnString
-	Tradeoffs sqlite.ColumnString
-	CardType  sqlite.ColumnString
-	CreatedAt sqlite.ColumnTimestamp
-	UpdatedAt sqlite.ColumnTimestamp
+	ID           sqlite.ColumnString
+	Question     sqlite.ColumnString
+	Answer       sqlite.ColumnString
+	Examples     sqlite.ColumnString
+	Tradeoffs    sqlite.ColumnString
+	CardType     sqlite.ColumnString
+	CreatedAt    sqlite.ColumnTimestamp
+	UpdatedAt    sqlite.ColumnTimestamp
+	EaseFactor   sqlite.ColumnFloat
+	IntervalDays sqlite.ColumnInteger
+	DueDate      sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -66,31 +69,37 @@ func newCardsTable(schemaName, tableName, alias string) *CardsTable {
 
 func newCardsTableImpl(schemaName, tableName, alias string) cardsTable {
 	var (
-		IDColumn        = sqlite.StringColumn("id")
-		QuestionColumn  = sqlite.StringColumn("question")
-		AnswerColumn    = sqlite.StringColumn("answer")
-		ExamplesColumn  = sqlite.StringColumn("examples")
-		TradeoffsColumn = sqlite.StringColumn("tradeoffs")
-		CardTypeColumn  = sqlite.StringColumn("card_type")
-		CreatedAtColumn = sqlite.TimestampColumn("created_at")
-		UpdatedAtColumn = sqlite.TimestampColumn("updated_at")
-		allColumns      = sqlite.ColumnList{IDColumn, QuestionColumn, AnswerColumn, ExamplesColumn, TradeoffsColumn, CardTypeColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns  = sqlite.ColumnList{QuestionColumn, AnswerColumn, ExamplesColumn, TradeoffsColumn, CardTypeColumn, CreatedAtColumn, UpdatedAtColumn}
-		defaultColumns  = sqlite.ColumnList{IDColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn           = sqlite.StringColumn("id")
+		QuestionColumn     = sqlite.StringColumn("question")
+		AnswerColumn       = sqlite.StringColumn("answer")
+		ExamplesColumn     = sqlite.StringColumn("examples")
+		TradeoffsColumn    = sqlite.StringColumn("tradeoffs")
+		CardTypeColumn     = sqlite.StringColumn("card_type")
+		CreatedAtColumn    = sqlite.TimestampColumn("created_at")
+		UpdatedAtColumn    = sqlite.TimestampColumn("updated_at")
+		EaseFactorColumn   = sqlite.FloatColumn("ease_factor")
+		IntervalDaysColumn = sqlite.IntegerColumn("interval_days")
+		DueDateColumn      = sqlite.TimestampColumn("due_date")
+		allColumns         = sqlite.ColumnList{IDColumn, QuestionColumn, AnswerColumn, ExamplesColumn, TradeoffsColumn, CardTypeColumn, CreatedAtColumn, UpdatedAtColumn, EaseFactorColumn, IntervalDaysColumn, DueDateColumn}
+		mutableColumns     = sqlite.ColumnList{QuestionColumn, AnswerColumn, ExamplesColumn, TradeoffsColumn, CardTypeColumn, CreatedAtColumn, UpdatedAtColumn, EaseFactorColumn, IntervalDaysColumn, DueDateColumn}
+		defaultColumns     = sqlite.ColumnList{IDColumn, CreatedAtColumn, UpdatedAtColumn, EaseFactorColumn, IntervalDaysColumn}
 	)
 
 	return cardsTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:        IDColumn,
-		Question:  QuestionColumn,
-		Answer:    AnswerColumn,
-		Examples:  ExamplesColumn,
-		Tradeoffs: TradeoffsColumn,
-		CardType:  CardTypeColumn,
-		CreatedAt: CreatedAtColumn,
-		UpdatedAt: UpdatedAtColumn,
+		ID:           IDColumn,
+		Question:     QuestionColumn,
+		Answer:       AnswerColumn,
+		Examples:     ExamplesColumn,
+		Tradeoffs:    TradeoffsColumn,
+		CardType:     CardTypeColumn,
+		CreatedAt:    CreatedAtColumn,
+		UpdatedAt:    UpdatedAtColumn,
+		EaseFactor:   EaseFactorColumn,
+		IntervalDays: IntervalDaysColumn,
+		DueDate:      DueDateColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

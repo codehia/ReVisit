@@ -11,16 +11,10 @@ import (
 	"time"
 )
 
-type Cards struct {
+type CardAttempts struct {
 	ID           *string `sql:"primary_key"`
-	Question     string
-	Answer       string
-	Examples     string
-	Tradeoffs    string
-	CardType     string
+	CardID       string
+	QualityScore int32
 	CreatedAt    *time.Time
 	UpdatedAt    *time.Time
-	EaseFactor   *float32
-	IntervalDays *int32
-	DueDate      *time.Time
 }
