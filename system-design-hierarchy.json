@@ -172,37 +172,107 @@
     {
       "name": "Architecture Styles",
       "children": [
-        { "name": "Client-Server Architecture" },
-        { "name": "Monolithic Architecture" },
-        { "name": "Microservices Architecture" },
-        { "name": "Serverless Architecture" },
-        { "name": "Event-Driven Architecture" }
+        {
+          "name": "Client-Server Architecture",
+          "notes": "Client initiates requests; server responds. Foundation of every web application. DNS resolves domain to IP; HTTP carries request/response. Separating client from server lets each scale independently. Alex Xu Ch1 starts here and layers complexity on top: LB, DB replication, cache, CDN."
+        },
+        {
+          "name": "Monolithic Architecture",
+          "notes": "All components (UI, business logic, data access) deployed as a single unit. Simple to develop, test, and deploy early. Pain emerges at scale: long build/test cycles, risky deploys (one bug can take down everything), inability to scale one component without scaling all. Classic first architecture before microservices or modular monolith. Alex Xu Ch1."
+        },
+        {
+          "name": "Microservices Architecture",
+          "notes": "System split into independently deployable services, each owning its own data store. Benefits: independent scaling, deployment, fault isolation, polyglot stacks. Costs: network latency, distributed tracing complexity, data consistency across services, service discovery overhead. Netflix, Amazon canonical examples. DDIA Ch1, Alex Xu Ch1."
+        },
+        {
+          "name": "Serverless Architecture",
+          "notes": "Functions as the unit of deployment. Cloud provider manages all infrastructure. Pay-per-invocation. Good for event-driven, bursty workloads. Cold start latency is the main tradeoff; mitigated by pre-warming or provisioned concurrency. AWS Lambda max 15-min execution, 10GB RAM. Meta XFaaS (2023) addresses stateful serverless at hyperscale. systemdesign42 newsletter."
+        },
+        {
+          "name": "Event-Driven Architecture",
+          "notes": "Services communicate via events on a message broker rather than direct RPC calls. Producer emits event; one or many consumers react. Decouples temporal coupling (producer doesn't wait) and spatial coupling (producer doesn't know consumers). Challenges: ordering guarantees, at-least-once delivery, idempotency. DDIA Ch5 covers this under Dataflow Through Services."
+        },
+        {
+          "name": "Modular Monolith",
+          "notes": "Single deployable binary with enforced internal module boundaries. Each module owns a business domain (Orders, Inventory, Payments) with a public API; other modules cannot access its internals directly. Shopify: Ruby on Rails monolith handling 30TB/min by enforcing module boundaries instead of microservices. Benefits: simpler ops than microservices, better than big-ball-of-mud monolith. Module boundaries can later become service cuts. systemdesign42 newsletter."
+        },
+        {
+          "name": "Cell-Based Architecture",
+          "notes": "System partitioned into isolated 'cells', each a complete, independent stack serving a subset of users or tenants. Inspired by watertight compartments on ships: failure is contained to one cell. AWS, Slack, and Roblox use this. Router maps user/tenant to cell. Cells don't share databases or state. Scales by adding cells, not by making individual cells bigger. systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Networking and Protocols",
       "children": [
-        { "name": "OSI Model" },
-        { "name": "HTTP vs HTTPS" },
-        { "name": "TCP vs UDP" },
-        { "name": "TLS/SSL" },
-        { "name": "Synchronous vs Asynchronous Communication" },
+        {
+          "name": "OSI Model",
+          "notes": "7 layers: Physical (bits), Data Link (frames, MAC addresses), Network (IP routing), Transport (TCP/UDP ports), Session, Presentation, Application (HTTP, DNS, TLS). Practical relevance: L3 = IP-level rate limiting (iptables), L4 = TCP/UDP load balancing, L7 = HTTP-aware LB and API gateways. Alex Xu Ch4 references layer numbers when discussing where rate limiting can be applied."
+        },
+        {
+          "name": "HTTP vs HTTPS",
+          "notes": "HTTP: plaintext application-layer protocol over TCP. HTTPS = HTTP over TLS; encrypts all traffic between client and server. Without HTTPS: any network hop can read or modify data (man-in-the-middle). TLS provides: confidentiality (encryption), integrity (MAC), authentication (server certificate). HTTPS is now the baseline for any production service."
+        },
+        {
+          "name": "How HTTPS Works",
+          "notes": "TLS 1.3 handshake: (1) Client Hello with supported cipher suites and random nonce. (2) Server Hello with chosen cipher, certificate signed by CA, server random. (3) Client verifies certificate against trusted CA chain. (4) Key exchange via ECDH: both sides derive same symmetric session key without transmitting it. (5) Encrypted session begins. Root CAs are pre-installed in OS/browser. systemdesign42 newsletter."
+        },
+        {
+          "name": "HTTP Headers",
+          "notes": "Categories: Caching (Cache-Control max-age/no-store, ETag, Last-Modified). Content (Accept, Content-Type, Content-Encoding). Auth (Authorization Bearer, WWW-Authenticate). CORS (Access-Control-Allow-Origin). Rate limiting (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Retry-After from Alex Xu Ch4). Security (Strict-Transport-Security HSTS, X-Content-Type-Options). Observability (X-Request-ID, X-Correlation-ID). systemdesign42 newsletter."
+        },
+        {
+          "name": "TCP vs UDP",
+          "notes": "TCP: reliable, ordered, connection-oriented. Three-way handshake (SYN/SYN-ACK/ACK). Retransmits lost packets. Congestion control. Used by: HTTP, databases, SSH. UDP: unreliable, unordered, connectionless. No retransmits, no handshake, lower latency. Used by: DNS, VoIP, video streaming, games. QUIC (HTTP/3) builds reliability on top of UDP. DDIA Ch9: even a TCP ACK doesn't prove the application processed the request."
+        },
+        {
+          "name": "TLS/SSL",
+          "notes": "TLS 1.3 (2018) is current standard; removes insecure cipher suites, mandatory forward secrecy via ECDHE, faster 1-RTT handshake. Mutual TLS (mTLS): both client and server present certificates; used in service meshes (Istio, Linkerd) for service identity. Certificate lifecycle: ACME protocol (Let's Encrypt) for automated issuance and rotation. Certificate pinning: hardcodes expected cert in client, prevents CA compromise attacks."
+        },
+        {
+          "name": "Synchronous vs Asynchronous Communication",
+          "notes": "Synchronous: caller blocks until response received. Simple, consistent, tight temporal coupling: if downstream is slow or down, caller is blocked. Used by: HTTP APIs, gRPC. Async: caller publishes message and moves on; consumer processes in its own time. Decouples availability. Adds complexity: ordering, exactly-once semantics, eventual consistency. Alex Xu Ch1 introduces message queues as the async mechanism for background jobs like photo processing."
+        },
         {
           "name": "Real-Time Communication",
           "children": [
-            { "name": "WebSockets" },
-            { "name": "WebRTC" },
-            { "name": "Long Polling" },
-            { "name": "Server-Sent Events" },
-            { "name": "Webhooks" }
+            {
+              "name": "WebSockets",
+              "notes": "Full-duplex persistent connection established via HTTP Upgrade request. After upgrade, both client and server can push frames at any time. Used for: chat apps, live dashboards, multiplayer games, collaborative editors. Each connection is stateful, so horizontal scaling requires sticky sessions or a shared pub/sub layer (Redis Pub/Sub, Kafka) for cross-server messaging. WhatsApp and Slack use WebSockets as the transport for real-time delivery. systemdesign42 newsletter."
+            },
+            {
+              "name": "WebRTC",
+              "notes": "Browser-to-browser peer-to-peer audio, video, and data. STUN server: helps each peer discover its public IP/port behind NAT. TURN server: relay when direct P2P is blocked. Signaling (offer/answer exchange) done via your own channel (usually WebSocket). After connection: no server relay required, lowest latency path. Used by Zoom, Google Meet, Discord video. P2P doesn't scale past ~8 participants without an SFU (Selective Forwarding Unit) server."
+            },
+            {
+              "name": "Long Polling",
+              "notes": "Client sends HTTP request; server holds it open until data is ready or timeout expires. On response, client immediately sends next request. Simulates server push over HTTP. Higher overhead than WebSockets: new TCP connection per response, HTTP headers each time. Used by older chat apps and systems that can't use WebSockets. Alex Xu Ch12 compares long polling to WebSockets for chat system design."
+            },
+            {
+              "name": "Server-Sent Events",
+              "notes": "One-way persistent stream from server to client over HTTP using EventSource API. Server sends text/event-stream; client receives events as they arrive. Simpler than WebSockets for push-only use cases: live feeds, progress bars, notifications. Auto-reconnects with Last-Event-ID for resuming. Not all proxies/CDNs handle persistent HTTP correctly. Not suitable for bidirectional communication."
+            },
+            {
+              "name": "Webhooks",
+              "notes": "Reverse HTTP: server calls your URL (HTTP POST) when an event occurs instead of you polling. You register a callback URL. Server sends event payload to it. Used by: Stripe (payment events), GitHub (push/PR events), Zapier. Reliability requires: HTTPS endpoint reachability, idempotency (events may be delivered more than once), signature verification (HMAC to prove payload is from the right sender). systemdesign42 newsletter."
+            }
           ]
         },
         {
           "name": "RPC and APIs over the Wire",
           "children": [
-            { "name": "RPC Fundamentals" },
-            { "name": "gRPC" },
-            { "name": "REST vs RPC" }
+            {
+              "name": "RPC Fundamentals",
+              "notes": "Remote Procedure Call: make a network call look like a local function call. Abstract away network from application code. Problems RPC hides: latency, failures, retries, serialization. Leaky abstractions: RPC can't fully hide that the network is unreliable. REST is resource-oriented; RPC is operation-oriented (getUser vs GET /users/:id). DDIA Ch5 covers RPC under Dataflow Through Services. Modern RPC frameworks handle serialization, code generation, and error handling."
+            },
+            {
+              "name": "gRPC",
+              "notes": "Google's open-source RPC framework. Uses HTTP/2 (multiplexing, header compression, binary framing) as transport. Protocol Buffers as serialization. Strongly typed via .proto schema. Supports: unary, client streaming, server streaming, bidirectional streaming. ~5-10x smaller payload than JSON. Used for service-to-service at Google, Netflix, Square. Code generation in 10+ languages. Tradeoff vs REST: not human-readable, harder to debug, browser support limited without gRPC-Web. DDIA Ch5."
+            },
+            {
+              "name": "REST vs RPC",
+              "notes": "REST: resources as nouns, HTTP verbs as operations, stateless, cacheable, hypermedia. Advantages: universally understood, great tooling, easy to cache, browser-native. RPC: operations as verbs, tightly coupled interface, often binary. Advantages: type safety, code generation, streaming support, lower latency. Rule of thumb: REST for public APIs and browser clients, gRPC for internal service-to-service calls. DDIA Ch5."
+            }
           ]
         }
       ]
@@ -210,47 +280,135 @@
     {
       "name": "DNS and Routing",
       "children": [
-        { "name": "DNS" },
-        { "name": "DNS Load Balancing" },
-        { "name": "Anycast Routing" }
+        {
+          "name": "DNS",
+          "notes": "Domain Name System: distributed hierarchical lookup. Query flow: browser cache -> OS resolver -> recursive resolver -> root nameserver -> TLD nameserver -> authoritative nameserver -> IP. TTL controls caching at each level; low TTL enables faster failover but more DNS traffic. Key record types: A (IPv4), AAAA (IPv6), CNAME (alias), MX (mail), TXT (verification), NS (nameserver delegation). DNS is often overlooked as a SPOF; registrar lock-in and TTL values are important operational considerations. Alex Xu Ch1."
+        },
+        {
+          "name": "DNS Load Balancing",
+          "notes": "Return multiple A records per domain; clients round-robin across returned IPs. No knowledge of server health: a dead server still gets traffic until TTL expires. geoDNS: return different IPs based on client's geographic location (determined by resolver IP). Alex Xu Ch1: 'users are geoDNS-routed to the closest data center.' Weighted DNS for canary or A/B traffic splits. Limitation: DNS caching means failover is slow unless TTL is very short (30-60 seconds)."
+        },
+        {
+          "name": "Anycast Routing",
+          "notes": "Same IP address (or prefix) announced from multiple geographic PoPs via BGP. Network routers automatically send traffic to the nearest PoP. Used by: Cloudflare (300+ PoPs), Fastly, AWS Global Accelerator. Benefits: automatic geographic load balancing, DDoS absorption (traffic distributed across PoPs), low latency. Distinct from unicast (one host) and multicast (specific group). Used for: CDN edge nodes, DNS resolvers (1.1.1.1, 8.8.8.8 are anycast), NTP."
+        }
       ]
     },
     {
       "name": "Load Balancing and Proxies",
       "children": [
-        { "name": "Load Balancing" },
+        {
+          "name": "Load Balancing",
+          "notes": "Distributes incoming requests across a pool of backend servers. Prevents any single server from becoming a bottleneck. Provides: horizontal scalability (add servers to pool), high availability (remove unhealthy servers from pool), zero-downtime deploys (drain one server at a time). L4 LB: routes by TCP/IP headers, blind to application protocol, low latency. L7 LB: routes by HTTP headers/URL/cookies, can do content-based routing. Alex Xu Ch1: LB is added after explaining the single-server limitation."
+        },
         {
           "name": "Load Balancing Algorithms",
           "children": [
-            { "name": "Round Robin" },
-            { "name": "Least Connections" },
-            { "name": "Weighted Round Robin" },
-            { "name": "IP Hash" },
-            { "name": "Least Response Time" }
+            {
+              "name": "Round Robin",
+              "notes": "Requests distributed sequentially: server 1, server 2, server 3, server 1... Simplest algorithm. Problem: doesn't account for server heterogeneity or request heaviness. Best for: homogeneous servers, uniform request weights (e.g., stateless API). Alex Xu Ch1."
+            },
+            {
+              "name": "Least Connections",
+              "notes": "Route each new request to the server with the fewest active connections. Accounts for variable request duration unlike round robin. Better for: long-lived connections, heterogeneous request weights. NGINX default for upstream groups when requests have variable processing time. Requires LB to track connection count per backend."
+            },
+            {
+              "name": "Weighted Round Robin",
+              "notes": "Servers assigned integer weights proportional to their capacity. A server with weight 3 receives 3x more requests than one with weight 1. Handles heterogeneous server fleets (different hardware specs). Simple extension of round robin. Used when you want to gradually shift load (e.g., testing a new server type at weight 1 before promoting to full weight)."
+            },
+            {
+              "name": "IP Hash",
+              "notes": "Consistent hashing on client IP address to always route a client to the same backend. Provides sticky sessions without shared session store. Use case: WebSocket connections that must stay on one server. Problem: uneven distribution when many clients share an IP (corporate NAT). Also breaks on server pool changes. Better alternatives: cookie-based stickiness or shared session store."
+            },
+            {
+              "name": "Least Response Time",
+              "notes": "Routes to the server with the lowest average response time and fewest active connections. Adapts to real-time server performance. Used by HAProxy and NGINX Plus. Most sophisticated of common algorithms; requires LB to continuously measure backend response times. Best for: heterogeneous backends or backends with variable performance. systemdesign42 newsletter."
+            }
           ]
         },
-        { "name": "Proxy vs Reverse Proxy" },
-        { "name": "API Gateway" }
+        {
+          "name": "Proxy vs Reverse Proxy",
+          "notes": "Forward proxy: sits in front of clients. Client explicitly sends requests through it. Hides client identity from servers. Used for: corporate web filtering, VPNs, anonymization. Reverse proxy: sits in front of servers. Client doesn't know about backend topology. Handles: SSL termination, compression, caching, logging, routing. NGINX handles 1M concurrent connections on a single server via its event loop model. systemdesign42 newsletter."
+        },
+        {
+          "name": "API Gateway",
+          "notes": "Reverse proxy with application-layer intelligence: request routing, auth (validate JWT/API key), rate limiting, SSL termination, request/response transformation, caching, circuit breaking, observability. Single entry point for microservices. AWS API Gateway, Kong, Envoy, NGINX Plus, Traefik. Alex Xu Ch1: API gateway sits in front of the microservices layer. Tradeoff: single point of failure if not replicated; adds a latency hop."
+        },
+        {
+          "name": "API Gateway vs Load Balancer vs Reverse Proxy",
+          "notes": "Load balancer: L4 or L7, distributes traffic by algorithm (round robin, least connections), minimal protocol awareness, no application logic. Reverse proxy: L7, caches responses, terminates TLS, hides backend topology, no application-specific logic. API gateway: superset of reverse proxy and adds auth, rate limiting, API composition (aggregate multiple upstream calls), request/response transformation, developer portal. Choose LB for raw throughput, reverse proxy for edge caching, API gateway for microservices entry point. systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Caching",
       "children": [
-        { "name": "Caching Fundamentals" },
-        { "name": "Cache Invalidation" },
+        {
+          "name": "Caching Fundamentals",
+          "notes": "Temporary storage of expensive-to-compute or frequently-read data. Cache hit: return from cache (fast). Cache miss: compute/fetch from source, store in cache, return. Cache tier: separate from DB, can be scaled independently. Use cache when: data is read frequently, modified infrequently, and freshness tolerance allows. Don't cache: user-specific secure data without proper isolation, or data that changes with every request. Alex Xu Ch1."
+        },
+        {
+          "name": "Cache Invalidation",
+          "notes": "When cached data becomes stale after a write to the source. Strategies: TTL-based expiry (simplest, may serve stale data up to TTL), event-driven invalidation (write triggers cache delete, needs atomic DB+cache operation or CDC), write-through (update cache on every write, always consistent, higher write cost). Inconsistency window: time between DB write and cache invalidation. Alex Xu Ch1 notes consistency requires the data store and cache to be updated in the same transaction, which distributed systems make hard."
+        },
+        {
+          "name": "Caching Patterns",
+          "children": [
+            {
+              "name": "Cache-Aside",
+              "notes": "Application code checks cache; on miss, reads from DB and populates cache. Most common pattern. Application controls cache population. On write: application writes to DB, then invalidates or updates cache (or lets TTL handle it). Risk: thundering herd on cold cache. Mitigation: mutex/lock so only one thread populates. Redis + application code is the canonical implementation. systemdesign42 newsletter."
+            },
+            {
+              "name": "Write-Through",
+              "notes": "Every write goes to both cache and DB synchronously before returning to client. Cache is always in sync with DB. High write latency (two writes per operation). Read performance: always fast and consistent. Good for: read-heavy workloads where consistency is critical and write latency is acceptable. Tradeoff: unnecessary data cached (data written but never read still occupies cache memory). systemdesign42 newsletter."
+            },
+            {
+              "name": "Write-Behind",
+              "notes": "Write to cache immediately; persist to DB asynchronously in the background. Low write latency for the client. Risk: data loss if cache crashes before async write completes. Complex to implement correctly (retry logic, ordering). Use cases: write-heavy workloads where durability can be deferred (counters, analytics events, metrics aggregation). systemdesign42 newsletter."
+            },
+            {
+              "name": "Read-Through",
+              "notes": "Cache sits transparently between application and DB. On a cache miss, cache itself fetches from DB and returns to application (vs cache-aside where application fetches). Application only ever calls cache. Transparent to application code. Same thundering herd risk as cache-aside without request coalescing. Useful when you want to keep caching logic out of application code. systemdesign42 newsletter."
+            }
+          ]
+        },
         {
           "name": "Cache Eviction Policies",
           "children": [
-            { "name": "LRU" },
-            { "name": "LFU" },
-            { "name": "FIFO" },
-            { "name": "TTL" }
+            {
+              "name": "LRU",
+              "notes": "Least Recently Used. Evicts the entry not accessed for the longest time. Most common eviction policy. Redis: MAXMEMORY-POLICY allkeys-lru. Efficient O(1) implementation via doubly-linked list + hashmap. Assumption: recently accessed data is more likely to be accessed again. Limitation: doesn't account for frequency; a once-popular item evicted if not recently accessed."
+            },
+            {
+              "name": "LFU",
+              "notes": "Least Frequently Used. Evicts entry with lowest access count. Better than LRU when access frequency is more predictive than recency (e.g., static reference data). Redis: allkeys-lfu. Counter decay: counters are exponentially decayed over time to prevent stale high-count items from never being evicted. More complex than LRU; slightly higher overhead."
+            },
+            {
+              "name": "FIFO",
+              "notes": "First In, First Out. Evicts the oldest entry regardless of access pattern. Simple but poor hit rates because popularity is ignored. A frequently-accessed old entry gets evicted before a rarely-accessed new one. Rarely used in practice for general caches. Useful for queues and buffers where insertion order matters."
+            },
+            {
+              "name": "TTL",
+              "notes": "Time-to-live: each cache entry expires after a fixed duration and is removed. Redis EXPIRE, Memcached item TTL, CDN Cache-Control max-age. Two expiry mechanisms: lazy (remove entry on next access if expired) and active sweep (background process evicts expired keys). TTL is not a consistency mechanism: stale data is served up to the TTL. Set TTL based on how often data changes and how stale your application can tolerate. Alex Xu Ch1."
+            }
           ]
         },
-        { "name": "Distributed Cache" },
-        { "name": "Cache Stampede" },
-        { "name": "Cache Warming" },
-        { "name": "CDN" }
+        {
+          "name": "Distributed Cache",
+          "notes": "Cache spread across multiple nodes for capacity and high availability. Consistent hashing determines which node owns a key, so adding/removing nodes remaps only 1/N keys. Redis Cluster: 16384 hash slots, data sharded across nodes with replication per shard. Memcached: client-side sharding, no built-in HA. Challenge: network round-trip per cache lookup; cache nodes are SPOFs if not replicated. Alex Xu Ch5 (consistent hashing applies directly to distributed cache design)."
+        },
+        {
+          "name": "Cache Stampede",
+          "notes": "Multiple concurrent requests arrive for the same uncached key, all go to DB simultaneously. Also called 'thundering herd' or 'dog-pile effect'. Happens after: cache expiry, cache flush, cold start. Mitigations: mutex/semaphore (only one thread populates, others wait); probabilistic early expiry (refresh before TTL expires based on random chance); background refresh (async refresh before expiry). Alex Xu Ch6 (key-value store deep dive)."
+        },
+        {
+          "name": "Cache Warming",
+          "notes": "Pre-populate cache before serving live traffic. Use cases: after deploy, after cache flush, after a new region comes online. Strategies: replay recent queries, background job seeds hot keys from DB, gradual traffic ramp (canary takes traffic first, warms cache). Without warming: first traffic wave hits DB directly, causing latency spike or overload. Critical for systems with strong 80/20 access patterns."
+        },
+        {
+          "name": "CDN",
+          "notes": "Content Delivery Network: globally distributed cache for static and dynamic content. Edge servers close to users serve cached content, reducing origin load and latency. How it works: client requests URL; CDN edge checks cache; on miss, fetches from origin, caches with TTL; serves from cache on subsequent requests. Alex Xu Ch1 details this flow. Key considerations: cache expiry (Cache-Control or CDN TTL), invalidation (URL versioning: image.png?v=2, or purge API), CDN fallback strategy if outage occurs. Providers: Cloudflare, Akamai, Fastly, AWS CloudFront."
+        }
       ]
     },
     {
@@ -621,23 +779,59 @@
     {
       "name": "Specialized Databases",
       "children": [
-        { "name": "Key-Value Stores" },
-        { "name": "Document Databases" },
-        { "name": "Wide-Column Stores" },
-        { "name": "Graph Databases" },
-        { "name": "Full-Text Search Engine" },
-        { "name": "Time Series Database" },
-        { "name": "Vector Database" }
+        {
+          "name": "Key-Value Stores",
+          "notes": "Simplest NoSQL model: hash map at scale. O(1) reads/writes by key. Redis: in-memory, supports rich data structures (strings, lists, sets, sorted sets, hashes, streams), persistence via RDB snapshots or AOF log, TTL per key, pub/sub. DynamoDB: managed, serverless scaling, single-digit-ms latency, GSI/LSI, DynamoDB Streams for CDC. Memcached: pure in-memory cache, no persistence, no rich data types, simpler than Redis. Alex Xu Ch6 designs a distributed key-value store from scratch covering consistent hashing, replication, versioning, and CAP tradeoffs."
+        },
+        {
+          "name": "Document Databases",
+          "notes": "Stores JSON/BSON documents; each document is a self-contained record with nested fields. Schema-flexible: different documents in the same collection can have different fields. Good for: hierarchical/tree-structured data, content management, user profiles. Poor for: many-to-many relationships (no joins). MongoDB: most widely used, added multi-document ACID transactions in v4.0. CouchDB: revision-based, designed for sync/replication. Firestore: serverless, real-time sync for mobile. DDIA Ch3 notes document model reduces object-relational mismatch for tree-shaped data."
+        },
+        {
+          "name": "Wide-Column Stores",
+          "notes": "Rows have dynamic, sparse columns grouped into column families. Efficient for: writing billions of rows with high throughput, time-series data, wide sparse tables. Cassandra: leaderless, peer-to-peer, tunable consistency (ONE/QUORUM/ALL), LSM-tree storage, linear write scalability. HBase: Hadoop-based, strong consistency, used by Facebook Messenger. Bigtable: Google's original wide-column store. Tradeoff: no joins, no ad-hoc queries, schema must be designed around access patterns. Write-optimized; Cassandra handles 1M+ writes/sec on commodity hardware."
+        },
+        {
+          "name": "Graph Databases",
+          "notes": "Nodes (entities) and edges (relationships), each with properties. Relationship traversal is O(1) per hop vs O(N log N) joins in relational DBs. Ideal for: social graphs, fraud detection, recommendation engines, knowledge graphs, network topology. Neo4j: ACID-compliant, Cypher query language, property graph model. Amazon Neptune: managed, supports both Property Graph (Gremlin) and RDF (SPARQL). Tradeoff: poor for aggregations over large datasets; not a replacement for relational DB. DDIA Ch3."
+        },
+        {
+          "name": "Full-Text Search Engine",
+          "notes": "Inverted index maps terms to document lists (postings). Tokenization: 'Running quickly' -> ['run', 'quick']. Scoring: TF-IDF or BM25 ranks results by relevance. Elasticsearch: distributed, REST API, near-real-time search, built on Lucene. Used alongside primary DB (CDC via Debezium or dual-write keeps search index in sync). Not a primary store: no ACID, eventual consistency. Use cases: product search, log analytics (ELK stack), text search on unstructured content."
+        },
+        {
+          "name": "Time Series Database",
+          "notes": "Optimized for append-heavy writes of timestamped measurements. Schema: metric_name + tags + timestamp + value. Features: automatic downsampling (aggregate old data), retention policies (auto-delete old data), efficient compression of sequential numeric data. InfluxDB: custom TSM storage engine, Flux query language. TimescaleDB: Postgres extension, SQL-compatible. Prometheus: pull-based metrics, PromQL, 15-day default retention. Use cases: IoT sensor data, application metrics, financial tick data, system monitoring."
+        },
+        {
+          "name": "Vector Database",
+          "notes": "Stores high-dimensional embeddings (e.g., 1536-float vectors from text-embedding-ada-002). Approximate Nearest Neighbor (ANN) search finds vectors closest to a query vector. Algorithms: HNSW (Hierarchical Navigable Small World graphs), IVF (Inverted File Index). Pinecone: managed, simple API. Weaviate, Qdrant: open-source. pgvector: Postgres extension for vector storage. Foundation of: semantic search, RAG (Retrieval-Augmented Generation), recommendation by similarity. Tradeoff vs exact search: ANN is approximate but orders of magnitude faster for high dimensions. systemdesign42 AI Engineering section."
+        }
       ]
     },
     {
       "name": "Storage",
       "children": [
-        { "name": "Object Storage" },
-        { "name": "Distributed File Systems" },
-        { "name": "Block vs File vs Object Storage" },
-        { "name": "Data Compression" },
-        { "name": "Erasure Coding" }
+        {
+          "name": "Object Storage",
+          "notes": "Flat namespace of objects (key = path, value = bytes, plus metadata). Infinitely scalable. S3: 11 nines durability via erasure coding across AZs, strong read-after-write consistency (since 2020), lifecycle rules for tiering to cheaper storage classes. Not a filesystem: no rename (copy+delete), no append (overwrite), no partial write. Multipart upload for large files. Use cases: images, videos, backups, ML training data, data lake. GCS and Azure Blob are equivalents. DDIA Ch11."
+        },
+        {
+          "name": "Distributed File Systems",
+          "notes": "POSIX-like filesystem semantics spread across many machines. HDFS (Hadoop Distributed File System): 128MB blocks replicated 3x, NameNode (metadata) + DataNodes (blocks), write-once-read-many semantics. GFS (Google File System): HDFS's predecessor. Used for batch processing pipelines. HDFS is weak for small files (NameNode memory bottleneck). For new systems: object storage (S3) is preferred over HDFS for most analytical workloads. DDIA Ch11."
+        },
+        {
+          "name": "Block vs File vs Object Storage",
+          "notes": "Block: raw storage volumes presented to OS as disk (AWS EBS, SAN). OS manages filesystem on top. Lowest latency; databases (Postgres, MySQL) use block storage. File: network-attached shared filesystem (NFS, AWS EFS, NAS). Multiple servers mount same filesystem. Object: flat key-value HTTP store (S3). No filesystem metadata overhead; most scalable and cheapest per GB. Rule of thumb: block for databases, file for shared application state, object for large media/backups. DDIA Ch11."
+        },
+        {
+          "name": "Data Compression",
+          "notes": "Reduces storage and I/O bandwidth at the cost of CPU. Algorithms: LZ4 (fastest, moderate ratio ~2x), Zstandard/zstd (good ratio ~3-4x, fast, Facebook), Snappy (Google, speed over ratio), gzip (high ratio but slow, for HTTP responses). Column-oriented storage (Parquet, ORC) benefits most: similar values in a column compress extremely well. Tradeoff: CPU cycles for compression/decompression vs I/O and storage cost savings. Usually wins on modern hardware since I/O is typically the bottleneck. DDIA Ch4."
+        },
+        {
+          "name": "Erasure Coding",
+          "notes": "Encode k data chunks into n total chunks (k < n) such that any k chunks can reconstruct the original. Example: Reed-Solomon (6,3): 6 data shards + 3 parity shards; any 6 of 9 can reconstruct. More storage-efficient than full 3x replication for same fault tolerance: (6,3) uses 1.5x overhead vs 3x replication. Amazon S3 uses erasure coding internally. RAID 5/6 are erasure coding at the disk level. Tradeoff: higher CPU overhead vs simple replication. Used for cold/archival storage at hyperscale where storage cost dominates."
+        }
       ]
     },
     {
@@ -646,57 +840,150 @@
         {
           "name": "Encoding Formats",
           "children": [
-            { "name": "Language-Specific Formats" },
-            { "name": "JSON, XML, and Binary Variants" },
-            { "name": "Protocol Buffers" },
-            { "name": "Avro" },
-            { "name": "Thrift" }
+            {
+              "name": "Language-Specific Formats",
+              "notes": "Java Serializable, Python pickle, Ruby Marshal. Tied to a single programming language with no cross-language interoperability. Security risk: deserialization can execute arbitrary code (common CVE vector). Poor versioning support. Slow compared to binary formats like Protobuf. Never use for: data stored long-term, data shared between services, data exposed externally. Only acceptable for: short-lived in-memory caching within a single process. DDIA Ch5."
+            },
+            {
+              "name": "JSON, XML, and Binary Variants",
+              "notes": "JSON: human-readable, universal browser support, native to JavaScript. Weaknesses: no distinction between integers and floats (float64 only), verbose, no schema enforcement by default. XML: more verbose than JSON, powerful schema validation (XSD). JSON Schema: widely adopted for validation and documentation; used in OpenAPI specs and schema registries (Confluent). Binary variants: MessagePack, BSON (MongoDB), CBOR: same tree structure as JSON but smaller and faster to parse. DDIA Ch5."
+            },
+            {
+              "name": "Protocol Buffers",
+              "notes": "Binary encoding from Google (2008). Schema defined in .proto files; code generation in 10+ languages. Fields identified by integer field numbers (not names): enables schema evolution since old code ignores unknown fields and new code handles missing fields via defaults. Encoding: ~33 bytes for a record that JSON encodes as ~80 bytes. No field names in wire format, requires schema file to decode. gRPC uses Protobuf exclusively. LinkedIn reduced latency 60% by migrating from JSON to Protobuf. DDIA Ch5, systemdesign42 newsletter."
+            },
+            {
+              "name": "Avro",
+              "notes": "Binary encoding from Apache Hadoop ecosystem. Schema embedded in the file header (unlike Protobuf where schema is out-of-band). No field tags: field identification by position in schema. Writer's schema and reader's schema can differ; Avro resolves differences via schema evolution rules. Best for: file-based data exchange (Hadoop, data lakes) and Kafka messages with Confluent Schema Registry. Schema Registry: stores Avro schemas; Kafka messages contain schema ID, not full schema. DDIA Ch5."
+            },
+            {
+              "name": "Thrift",
+              "notes": "Binary encoding from Facebook (2007), similar to Protobuf. Two binary protocols: BinaryProtocol (simple, verbose) and CompactProtocol (varint encoding, smaller). Also has JSON protocol. Multi-language code generation. Less widely adopted than Protobuf today; Protobuf's gRPC ecosystem won the service-to-service RPC market. Still used internally at Facebook/Meta and in some Apache projects. DDIA Ch5."
+            }
           ]
         },
-        { "name": "Schema Evolution" },
-        { "name": "Forward and Backward Compatibility" },
-        { "name": "Dataflow Through Databases" },
-        { "name": "Dataflow Through Services" },
-        { "name": "Durable Execution and Workflows" }
+        {
+          "name": "Schema Evolution",
+          "notes": "Changing the schema of data over time without breaking readers or writers. Safe changes: adding optional fields (old readers ignore unknown fields), removing optional fields (new readers use default). Risky changes: changing field types (may corrupt existing data), making required fields optional (could break validation). Protocol Buffers: use field numbers, never reuse deleted numbers. Avro: changing field names breaks reader-writer schema matching. DDIA Ch5."
+        },
+        {
+          "name": "Forward and Backward Compatibility",
+          "notes": "Backward compatible: new code can read old data. Forward compatible: old code can read new data. Both needed simultaneously during rolling deployments: for an interval, old and new code coexist. Achieving both: use optional fields with defaults, never remove required fields, never reuse field numbers (Protobuf). DDIA Ch5: 'rolling upgrades require all data written by new code to be readable by old code, and vice versa.'"
+        },
+        {
+          "name": "Dataflow Through Databases",
+          "notes": "Database as async dataflow: writer serializes data in DB, reader deserializes later. Old code must handle fields added by new code (forward compatibility). New code must handle records written by old code (backward compatibility). Schema migrations: ALTER TABLE adds column, but old rows don't have the value until backfilled. Postgres and MySQL add NULL for missing column values without rewriting rows. DDIA Ch5: 'the database acts as a data communication channel between present you and future you.'"
+        },
+        {
+          "name": "Dataflow Through Services",
+          "notes": "REST and RPC services evolve over time; clients and servers may run different versions. REST versioning via URI (/v1/, /v2/) or Accept header. RPC via schema evolution (Protobuf field numbers). Backward compatibility rule for services: servers must handle old requests from old clients; clients must handle old responses from old servers. API deprecation policy: maintain old versions for a defined period. DDIA Ch5 covers REST vs RPC tradeoffs in the context of service evolution."
+        },
+        {
+          "name": "Durable Execution and Workflows",
+          "notes": "Long-running processes (order fulfillment, multi-step pipelines) that must complete reliably despite failures at any step. Durable execution platforms: Temporal, AWS Step Functions, Conductor. Each step is an 'activity'; failures are retried automatically. Workflow state is checkpointed so a worker crash doesn't lose progress. Temporal: open-source, code-first workflow definition. AWS Step Functions: JSON state machine definition, managed. DDIA Ch5 (2nd Ed.) introduces this as part of service-to-service dataflow patterns."
+        }
       ]
     },
     {
       "name": "Distributed Systems Theory",
       "children": [
-        { "name": "CAP Theorem" },
-        { "name": "PACELC Theorem" },
+        {
+          "name": "CAP Theorem",
+          "notes": "Brewer's theorem (2000): a distributed system can provide at most two of: Consistency (every read gets the most recent write), Availability (every request gets a non-error response), Partition Tolerance (system continues operating despite network splits). Since network partitions are unavoidable in practice, the real choice is CP (sacrifice availability: refuse requests when unsure about consistency) vs AP (sacrifice consistency: return potentially stale data). DDIA Ch10 notes CAP is widely misunderstood: consistency here means linearizability, not the C in ACID."
+        },
+        {
+          "name": "PACELC Theorem",
+          "notes": "Extension of CAP by Daniel Abadi (2012). Even when there is no Partition, there is still a latency vs consistency tradeoff: fast responses require giving up some consistency (e.g., reading from a local replica without checking the leader). PACELC: if Partition -> Availability or Consistency; Else -> Latency or Consistency. DynamoDB is PA/EL (availability during partitions, latency over consistency normally). ZooKeeper is PC/EC (consistency always). More practical than CAP for everyday design decisions."
+        },
         {
           "name": "Consistency Models",
           "children": [
-            { "name": "Linearizability" },
-            { "name": "Sequential Consistency" },
-            { "name": "Causal Consistency" },
-            { "name": "Eventual Consistency" },
-            { "name": "Read-Your-Writes Consistency" },
-            { "name": "Monotonic Reads" }
+            {
+              "name": "Linearizability",
+              "notes": "Strongest consistency guarantee. Every operation appears to take effect instantaneously at some point between its start and completion. Equivalent to having a single copy of the data. Required for: distributed locks, unique ID generation, leader election. Cost: requires coordination on every read and write. ZooKeeper and etcd provide linearizable reads/writes via Paxos/Raft. Single-leader DB with sync replication is linearizable. Multi-leader and leaderless are not. DDIA Ch10."
+            },
+            {
+              "name": "Sequential Consistency",
+              "notes": "All nodes see operations in the same global order, but not necessarily in real-time (operations can appear to be out of real-time order as long as the order is consistent across nodes). Weaker than linearizability. Used in some parallel programming memory models (x86 TSO). Less common in distributed DB contexts. DDIA Ch10."
+            },
+            {
+              "name": "Causal Consistency",
+              "notes": "Causally-related operations (A caused B) are seen in causal order by all nodes. Concurrent (unrelated) operations can be seen in different orders. Stronger than eventual consistency; weaker than sequential. Implemented via vector clocks or dependency tracking. MongoDB causal consistency sessions: ensure read-your-writes and monotonic reads across replica set members. Practical middle ground between eventual and linearizable. DDIA Ch10."
+            },
+            {
+              "name": "Eventual Consistency",
+              "notes": "If no new writes occur, all replicas will eventually converge to the same value. No guarantee on when convergence happens. Cassandra default, DynamoDB default, DNS propagation. Appropriate when: temporary staleness is acceptable, availability is more important than consistency (social feeds, analytics counters). Caveat: 'eventual' can mean seconds to minutes depending on replication lag and failure conditions. DDIA Ch6."
+            },
+            {
+              "name": "Read-Your-Writes Consistency",
+              "notes": "A user always sees their own writes on subsequent reads. Weaker than linearizability but often sufficient for good UX. Implementation: route user's reads to the same replica as their writes, or use leader for reads after writes, or track the write timestamp and wait until replica catches up. Prevents confusing experience of: posting a comment, refreshing, not seeing it. DDIA Ch6."
+            },
+            {
+              "name": "Monotonic Reads",
+              "notes": "A user will never observe data going backward in time: if they read value V at time T, all subsequent reads return V or something more recent. Achieved by always routing a user to the same replica. Prevents the confusing case of seeing a comment, refreshing, and it disappearing. DDIA Ch6."
+            }
           ]
         },
-        { "name": "Network Partitions" },
-        { "name": "Split-Brain Problem" },
+        {
+          "name": "Network Partitions",
+          "notes": "A network split where some nodes cannot communicate with others. Inevitable in large distributed systems: hardware failures, cable cuts, software bugs in networking stack. During a partition, nodes on each side can still communicate internally but not cross-partition. The system must decide: stop serving requests on the minority side (CP) or continue serving possibly stale data (AP). DDIA Ch9: 'the network is not reliable, this is not a theoretical concern but a practical reality in large clusters.'"
+        },
+        {
+          "name": "Split-Brain Problem",
+          "notes": "Two nodes simultaneously believe they are the active primary/leader and both accept writes, creating divergent state. Root cause: network partition that allows both to think the other is dead. Consequences: conflicting writes, data corruption. Prevention: fencing tokens (monotonically increasing numbers that invalidate old leaders), quorum (leader requires majority of nodes to proceed), STONITH (Shoot The Other Node In The Head: forcibly power down the other node). DDIA Ch9."
+        },
         {
           "name": "Distributed Systems Failure Modes",
           "children": [
-            { "name": "Partial Failures" },
-            { "name": "Unreliable Networks" },
-            { "name": "Process Pauses" },
-            { "name": "Byzantine Faults" },
-            { "name": "Fault Detection" },
-            { "name": "Timeouts and Unbounded Delays" }
+            {
+              "name": "Partial Failures",
+              "notes": "In a single machine, software fails in binary ways (process crashes or it doesn't). In a distributed system, some components fail while others continue: a partial failure. Disk I/O may fail while network is fine; one service may time out while another succeeds. This non-deterministic mixture of success and failure is the defining challenge of distributed systems. DDIA Ch9: 'a distributed system is one where the failure of a computer you didn't even know existed can render your own computer unusable.'"
+            },
+            {
+              "name": "Unreliable Networks",
+              "notes": "TCP guarantees delivery within a connection, but the connection itself can fail. A timeout tells you nothing: request could be lost, server could be down, or response could be lost. You cannot distinguish these cases. Packet delays can be seconds or minutes in pathological cases. DDIA Ch9: 'just because TCP acknowledged delivery doesn't mean the remote application processed the request.'"
+            },
+            {
+              "name": "Process Pauses",
+              "notes": "JVM garbage collection can pause a process for 0.1-30 seconds (stop-the-world GC). VM live migration pauses execution. OS scheduler preemption. During a pause, the process doesn't know time is passing and could have lost a distributed lock whose lease expired. After resuming, it acts as if the lease is still valid, creating split-brain. Mitigations: fencing tokens (any operation with a stale token is rejected by the resource), keepalive intervals shorter than lease duration. DDIA Ch9."
+            },
+            {
+              "name": "Byzantine Faults",
+              "notes": "Node sends arbitrary, incorrect, or malicious messages, not just crashes or silences. Named after the Byzantine Generals Problem (Lamport, 1982). Requires 3f+1 nodes to tolerate f Byzantine faults (vs 2f+1 for crash faults). Algorithms: PBFT, Tendermint, HotStuff. Used in: blockchain consensus, aerospace systems. Not needed for most enterprise distributed systems (assume honest nodes). DDIA Ch9."
+            },
+            {
+              "name": "Fault Detection",
+              "notes": "No perfect way to detect node failures in asynchronous networks. Heartbeat timeouts are the standard: if node doesn't respond within T seconds, assume failed. Timeout T is a tradeoff: too small = false positives (healthy slow nodes treated as dead, unnecessary failovers); too large = slow failure detection (users see errors longer). Phi Accrual Failure Detector (Cassandra): adaptive threshold based on historical heartbeat intervals, outputs suspicion level rather than binary dead/alive. DDIA Ch9."
+            },
+            {
+              "name": "Timeouts and Unbounded Delays",
+              "notes": "In async networks, there is no theoretical upper bound on how long a message delivery can take. TCP retransmits indefinitely. OS scheduling delays can add seconds. Choosing a timeout is always a guess. Low timeout: fast failure detection, but false positives under load. High timeout: fewer false positives, but users wait longer on real failures. DDIA Ch9: 'there is no correct value for a timeout, it is a tradeoff.' Solutions: circuit breakers, hedged requests, exponential backoff with jitter."
+            }
           ]
         },
         {
           "name": "Time and Ordering",
           "children": [
-            { "name": "Clock Synchronization Problem" },
-            { "name": "Monotonic vs Time-of-Day Clocks" },
-            { "name": "Logical Clocks" },
-            { "name": "Lamport Timestamps" },
-            { "name": "Vector Clocks" }
+            {
+              "name": "Clock Synchronization Problem",
+              "notes": "Different machines have different physical clocks that drift at different rates. NTP synchronizes to within ~1ms in good conditions, but can be much worse (100ms+) with network jitter. Clock can jump backward during NTP correction. Cannot use wall-clock timestamps to determine event order across machines. Google Spanner needed GPS/atomic clocks + uncertainty bounds (TrueTime) to use clocks for ordering. DDIA Ch9."
+            },
+            {
+              "name": "Monotonic vs Time-of-Day Clocks",
+              "notes": "Time-of-day (wall) clock: measures wall clock time, can jump backward (NTP adjustment, DST). Never use for measuring durations or event ordering across machines. Monotonic clock: measures elapsed time since an arbitrary point, always increases, not synchronized across machines. Use for: measuring elapsed time within one process. DDIA Ch9: 'for measuring durations, always use a monotonic clock. For timestamps in distributed systems, you need TrueTime or logical clocks.'"
+            },
+            {
+              "name": "Logical Clocks",
+              "notes": "Track causal ordering of events without requiring synchronized physical clocks. Invariant: if A happened-before B (A causally precedes B), then timestamp(A) < timestamp(B). Two main types: Lamport timestamps (single counter) and vector clocks (one counter per node). Used when you need to determine ordering of events across nodes without relying on wall-clock time. DDIA Ch10."
+            },
+            {
+              "name": "Lamport Timestamps",
+              "notes": "Algorithm: each process has a counter. Increment counter on every local event. On sending message: attach current counter. On receiving message: update counter to max(local, received) + 1. Guarantee: if A happened-before B, then L(A) < L(B). Limitation: the converse is not true. L(A) < L(B) doesn't mean A happened-before B (could be concurrent). Can't detect concurrent events. Useful for: generating unique ordered IDs in distributed systems, total-order broadcast. DDIA Ch10."
+            },
+            {
+              "name": "Vector Clocks",
+              "notes": "One counter per node in a vector. Increment own counter on each event. On message send: attach entire vector. On receive: take element-wise max, then increment own counter. Allows determining: A happened-before B (A's vector <= B's on all elements), B happened-before A, or A and B are concurrent (neither vector dominates). Used in: Dynamo/Riak for conflict detection, Git commit ancestry. More expensive than Lamport: O(N) per message vs O(1). DDIA Ch10."
+            }
           ]
         }
       ]
@@ -704,33 +991,94 @@
     {
       "name": "Distributed Coordination",
       "children": [
-        { "name": "Heartbeats" },
-        { "name": "Leader Election" },
-        { "name": "Consensus Algorithms" },
-        { "name": "Quorum" },
-        { "name": "Paxos Algorithm" },
-        { "name": "Raft Algorithm" },
-        { "name": "Gossip Protocol" },
-        { "name": "Service Discovery" },
-        { "name": "Distributed Locks and Leases" },
-        { "name": "Coordination Services (ZooKeeper, etcd)" }
+        {
+          "name": "Heartbeats",
+          "notes": "Periodic 'I'm alive' signals exchanged between nodes. Missing heartbeats trigger failure detection. Timeout tradeoff: too short = false positives under load; too long = slow failure detection. Gossip-based heartbeats: each node randomly sends its heartbeat to a subset of peers who propagate it further, O(log N) dissemination, no central coordinator. Used by: Cassandra (gossip), Kubernetes (kubelet liveness), etcd (election timeout). DDIA Ch9."
+        },
+        {
+          "name": "Hinted Handoff",
+          "notes": "Dynamo-style availability technique. When a write's target node is temporarily unreachable, another node accepts the write on its behalf and stores a 'hint' (metadata indicating who the data really belongs to). When the target recovers, the hint holder forwards the stored write. Enables writes to succeed even when target nodes are down, at the cost of temporary inconsistency. Used by: Cassandra, Riak, DynamoDB. Part of 'sloppy quorum': writing to available nodes rather than the designated quorum. DDIA Ch6, systemdesign42 website."
+        },
+        {
+          "name": "Leader Election",
+          "notes": "Designate one node to coordinate (handle writes, be authoritative). Algorithms: Raft (randomized election timeout: first node to time out sends RequestVote), Paxos (more complex, two-phase prepare/accept), Bully (highest ID wins). Key challenge: split-brain (two nodes elect themselves leader simultaneously). Prevention: quorum requirement (must win votes from majority of nodes). Fencing tokens: leader receives incrementing token; storage systems reject requests with stale tokens. DDIA Ch10."
+        },
+        {
+          "name": "Consensus Algorithms",
+          "notes": "Agreement on a single value across distributed nodes despite failures. Properties: termination (all non-failing nodes decide), agreement (all nodes decide the same value), validity (decided value was proposed by some node). FLP impossibility (1985): no deterministic async consensus algorithm can guarantee termination. Solved in practice via: randomized algorithms (Raft uses randomized election timeouts), partial synchrony assumption (message delays are bounded most of the time). DDIA Ch10."
+        },
+        {
+          "name": "Quorum",
+          "notes": "Minimum number of nodes that must agree for an operation to proceed. For N nodes: quorum = floor(N/2) + 1 (majority). Key property: any two quorums overlap by at least one node, so a write quorum and a read quorum always share a witness. Enables: safe leader election (new leader has at least one node from old leader's quorum, knows all committed writes), safe reads/writes in leaderless DBs. DDIA Ch10."
+        },
+        {
+          "name": "Paxos Algorithm",
+          "notes": "Classic consensus algorithm by Leslie Lamport (1989, published 1998). Phase 1 (Prepare): proposer sends prepare(n) to majority; acceptors respond with promise not to accept lower-numbered proposals and any previously accepted value. Phase 2 (Accept): proposer sends accept(n, v). Notoriously difficult to implement correctly for a replicated log (Multi-Paxos). Basis for Google Chubby, Apache ZooKeeper (ZAB). DDIA Ch10."
+        },
+        {
+          "name": "Raft Algorithm",
+          "notes": "Consensus designed by Ongaro and Ousterhout (2014) to be more understandable than Paxos. Three sub-problems: leader election (randomized timeouts), log replication (leader appends entries, replicates to majority, commits), safety (only nodes with up-to-date log can become leader). Used by: etcd (Kubernetes), CockroachDB, TiKV, InfluxDB Clustering, Consul. DDIA Ch10."
+        },
+        {
+          "name": "Gossip Protocol",
+          "notes": "Epidemic protocol for spreading information. Each node periodically selects a random set of peers and exchanges state (membership, heartbeats, metadata). Information reaches all N nodes in O(log N) rounds. Properties: decentralized (no coordinator), fault-tolerant, scalable. Used by: Cassandra (cluster membership, schema changes), Redis Cluster, Serf, Consul. Not suitable for strong consistency; for that, use consensus algorithms. DDIA Ch10."
+        },
+        {
+          "name": "Service Discovery",
+          "notes": "Mechanism for services to find each other's network addresses dynamically (addresses change with deployments, autoscaling). Two patterns: client-side (client queries service registry like Consul/Eureka, picks instance, calls directly with client-side LB); server-side (client calls LB/API gateway, LB queries registry). DNS-based: service registered as DNS name, TTL controls caching. Kubernetes: kube-dns provides DNS-based service discovery natively. systemdesign42 website."
+        },
+        {
+          "name": "Distributed Locks and Leases",
+          "notes": "Lock across multiple processes/machines. Lease: lock with a TTL that expires automatically if holder crashes. Redlock (Redis): acquire lock on majority of independent Redis nodes; lock is valid if acquired on majority within timeout. Controversy: process pauses (GC, VM migration) can cause a process to hold an expired lease and act as lock holder, mitigated by fencing tokens. ZooKeeper/etcd are preferred over Redis for correctness because they provide linearizable operations. DDIA Ch9."
+        },
+        {
+          "name": "Coordination Services (ZooKeeper, etcd)",
+          "notes": "Distributed key-value stores providing linearizable reads and writes, used for coordination primitives. ZooKeeper: Paxos-variant (ZAB protocol), znodes (hierarchical), watches (event notifications), ephemeral nodes (auto-deleted on client disconnect, basis for leader election). Used by: Kafka (historically), HBase, Storm. etcd: Raft-based, simpler API, v3 gRPC API. Used by: Kubernetes (all cluster state), CoreOS, Vitess. Both provide: leader election, distributed locking, config management, service discovery. DDIA Ch10."
+        }
       ]
     },
     {
       "name": "Distributed Transactions",
       "children": [
-        { "name": "Distributed Transactions Fundamentals" },
-        { "name": "Two-Phase Commit" },
-        { "name": "Three-Phase Commit" },
-        { "name": "SAGA Pattern" },
-        { "name": "Outbox Pattern" },
+        {
+          "name": "Distributed Transactions Fundamentals",
+          "notes": "A transaction spanning multiple nodes, services, or databases. Challenge: achieving atomicity: either all nodes commit or all abort when communication can fail at any point. Two sub-problems: atomic commitment (all agree to commit/abort) and concurrency control (isolation across distributed writes). DDIA Ch8: distributed transactions are used when a single business operation touches multiple data stores (e.g., debit account A on DB1 and credit account B on DB2)."
+        },
+        {
+          "name": "Two-Phase Commit",
+          "notes": "2PC: standard algorithm for atomic commitment across multiple nodes. Phase 1 (Prepare): coordinator sends prepare to all participants; each flushes writes to disk and responds yes/no. Phase 2 (Commit): if all said yes, coordinator writes commit to its log and sends commit to all; if any said no, sends abort. Blocking protocol: if coordinator crashes after Phase 1, participants are stuck waiting (in-doubt transactions). Coordinator's log is the commit point: recovery reads the log. Used in: XA transactions (Java EE), Google Spanner. DDIA Ch8."
+        },
+        {
+          "name": "Three-Phase Commit",
+          "notes": "3PC: non-blocking extension of 2PC. Adds a 'pre-commit' phase between prepare and commit to distinguish 'ready to commit' from 'definitely committing.' Theoretically eliminates 2PC's blocking under coordinator failure. Assumption: bounded network delays and process pauses, which async networks don't guarantee. In practice: not used because the assumption doesn't hold, and Paxos/Raft provide better alternatives for non-blocking atomic commitment. DDIA Ch8."
+        },
+        {
+          "name": "SAGA Pattern",
+          "notes": "Decompose a long-running transaction into a sequence of local transactions, each with a compensating transaction for rollback. If step N fails, execute compensating transactions for steps N-1 through 1. Two coordination styles: choreography (each service listens for events and decides next step, decentralized, complex to follow); orchestration (central saga orchestrator drives each step, easier to reason about). Used by: Halo (11.6M users via Saga pattern), microservices-based order fulfillment systems. systemdesign42 newsletter."
+        },
+        {
+          "name": "Outbox Pattern",
+          "notes": "Guarantee event publishing alongside a DB write without distributed transactions. Write to business table AND outbox table in the same local ACID transaction. Separate relay process reads outbox, publishes events to message broker, marks as published. If relay crashes, it re-reads unpublished outbox entries on restart: events published at-least-once. Consumer must be idempotent. Foundation of reliable event-driven microservices. Alternative to dual-write (writing to DB and broker independently, which risks partial failure)."
+        },
         {
           "name": "Delivery Semantics",
           "children": [
-            { "name": "At-Most-Once Delivery" },
-            { "name": "At-Least-Once Delivery" },
-            { "name": "Exactly-Once Delivery" },
-            { "name": "Idempotency" }
+            {
+              "name": "At-Most-Once Delivery",
+              "notes": "Send message once; do not retry on failure. Message may be lost but never duplicated. Use when: loss is acceptable and duplication is dangerous (e.g., charging a credit card: retrying a charge that was actually processed is worse than losing the charge). Implementation: fire-and-forget UDP, HTTP with no retry. DDIA Ch12."
+            },
+            {
+              "name": "At-Least-Once Delivery",
+              "notes": "Retry until acknowledged. Message may be delivered multiple times. Consumer must be idempotent (processing the same message twice has the same effect as processing it once). Default in: Kafka (producers retry until acked), SQS (visibility timeout + requeue on timeout). Most message systems default to at-least-once. DDIA Ch12."
+            },
+            {
+              "name": "Exactly-Once Delivery",
+              "notes": "Each message delivered and processed exactly once. Theoretically impossible in a fully async network (if ack is lost, sender retries = at-least-once). In practice: achieve via idempotent consumers + at-least-once delivery, or via distributed transactions. Kafka transactions (0.11+): producer transactions ensure exactly-once within Kafka topic-to-topic transforms. For DB writes: include message ID in write; use unique constraint to reject duplicates. DDIA Ch12."
+            },
+            {
+              "name": "Idempotency",
+              "notes": "An operation is idempotent if applying it multiple times has the same effect as applying it once. Critical for at-least-once delivery systems. Natural idempotency: SET x=5 (safe to repeat), DELETE WHERE id=X (safe to repeat). Non-idempotent: INCREMENT counter (each call changes result). Idempotency key pattern: client sends unique UUID per logical operation; server stores processed keys and returns cached result on duplicate. Stripe: accepts Idempotency-Key header with 48-hour uniqueness window. API design: all POST/PATCH operations that can be retried should support idempotency keys. systemdesign42 newsletter."
+            }
           ]
         }
       ]
@@ -738,71 +1086,674 @@
     {
       "name": "Messaging and Streaming",
       "children": [
-        { "name": "Message Queues" },
-        { "name": "Pub/Sub" },
-        { "name": "Log-Based Message Brokers (Kafka)" },
-        { "name": "Batch vs Stream Processing" },
-        { "name": "ETL Pipelines" },
-        { "name": "MapReduce" },
-        { "name": "Dataflow Engines (Spark, Flink)" },
-        { "name": "Event Time vs Processing Time" },
-        { "name": "Windowing" },
-        { "name": "Watermarks" },
-        { "name": "Stream Joins" }
+        {
+          "name": "Message Queues",
+          "notes": "Durable FIFO buffer for async communication between producers and consumers. Producer enqueues message; consumer dequeues and processes; message deleted after ack. Benefits: temporal decoupling (consumer can be down, messages queue up), load leveling (burst traffic absorbed by queue). At-least-once delivery: if consumer crashes mid-processing, message is redelivered after visibility timeout. RabbitMQ: AMQP, routing via exchanges, flexible topologies. AWS SQS: managed, serverless, visibility timeout for at-least-once. Alex Xu Ch1: message queue as async job queue for photo processing."
+        },
+        {
+          "name": "Pub/Sub",
+          "notes": "Publisher emits message to a topic; all current subscribers receive a copy independently. Fan-out: one publish = N consumers. Each subscriber maintains its own offset/cursor, processing one subscriber doesn't affect others. Enables: event broadcasting, decoupled notifications, multiple independent consumers for the same event stream. Google Pub/Sub: at-least-once, managed. AWS SNS: fan-out to SQS queues, Lambda, HTTP. Differs from queues: queue is competing consumers (load balance), pub/sub is fan-out (broadcast). Alex Xu Ch10 (notification system)."
+        },
+        {
+          "name": "Log-Based Message Brokers (Kafka)",
+          "notes": "Append-only partitioned log. Messages stored durably for configurable retention (hours to forever). Consumers track their position via offset: reading doesn't consume or delete messages. Multiple consumer groups independently read the same log at their own pace. Kafka: topics partitioned for parallelism, each partition replicated across brokers. Throughput: 150k+ writes/sec per partition, 600k+ reads/sec. Use cases: event streaming, CDC, activity tracking, audit logging, replay. Kafka Streams and ksqlDB for stream processing on top. DDIA Ch12."
+        },
+        {
+          "name": "Batch vs Stream Processing",
+          "notes": "Batch: processes a bounded, finite dataset (yesterday's logs, last month's transactions). High latency (hours), simple fault tolerance (re-run failed job). Spark, Hadoop MapReduce. Stream: processes an unbounded, continuously-arriving dataset. Low latency (milliseconds to seconds), complex fault tolerance (stateful recovery, exactly-once). Flink, Kafka Streams. Lambda architecture: use both: stream for low-latency approximate results, batch for accurate historical reprocessing. DDIA Ch11 and Ch12."
+        },
+        {
+          "name": "ETL Pipelines",
+          "notes": "Extract: pull data from sources (operational DBs, APIs, files) using CDC, bulk export, or API calls. Transform: clean, normalize, join, enrich (dbt models, Spark jobs). Load: write to analytical target (data warehouse, data lake). Tools: dbt (SQL-based transformations, runs in-warehouse), Airflow (pipeline orchestration), Fivetran/Airbyte (managed connectors). Modern trend: ELT (load first, transform in warehouse) vs traditional ETL (transform before loading). DDIA Ch11."
+        },
+        {
+          "name": "MapReduce",
+          "notes": "Batch processing model: Map function transforms input records into key-value pairs; shuffle and sort groups pairs by key across nodes; Reduce function aggregates each key's values. Fault-tolerant: re-run failed map tasks; intermediate data written to disk (expensive). HDFS-based. Largely superseded by Spark (in-memory, DAG instead of two-phase). Conceptually important: taught the industry to think about distributed computation as data transformation pipelines. DDIA Ch11."
+        },
+        {
+          "name": "Dataflow Engines (Spark, Flink)",
+          "notes": "Generalize MapReduce from two-phase (map+reduce) to arbitrary DAGs of operators (filter, join, sort, aggregate). Spark: lazy evaluation, RDDs/DataFrames, micro-batch streaming (Structured Streaming), in-memory caching for iterative algorithms (ML). Flink: true event-at-a-time streaming, stateful operators with managed state (RocksDB backend), exactly-once via checkpointing, event-time semantics. Both support batch and stream on unified APIs. DDIA Ch11."
+        },
+        {
+          "name": "Event Time vs Processing Time",
+          "notes": "Processing time: wall-clock time when the event arrives at the stream processor. Event time: timestamp embedded in the event indicating when it actually occurred. They can differ by seconds to hours (network delay, buffering, mobile offline events). Processing-time windows are simple but skew results for late data. Event-time windows give accurate results but require waiting for late events. Flink uses event time by default. DDIA Ch12."
+        },
+        {
+          "name": "Windowing",
+          "notes": "Aggregating stream events into finite time buckets. Tumbling window: fixed non-overlapping intervals (00:00-01:00, 01:00-02:00). Sliding window: fixed-size window that advances by a step (last 60 minutes, updated every minute, windows overlap). Session window: dynamic; groups events separated by less than a gap duration (user activity session). Windowing is necessary because you can't aggregate an infinite stream without boundaries. DDIA Ch12."
+        },
+        {
+          "name": "Watermarks",
+          "notes": "A watermark at time T means: 'the stream processor has seen all events with event_time <= T.' When watermark advances past a window boundary, that window is closed and aggregated. Tradeoff: aggressive watermark (low lag tolerance) closes windows quickly but may drop late events. Conservative watermark (high lag tolerance) waits longer for late events but increases output latency. Flink: configurable watermark strategies. DDIA Ch12."
+        },
+        {
+          "name": "Stream Joins",
+          "notes": "Join streams or streams with tables. Stream-stream join: both inputs time-windowed; events in the same window period are joined. Stream-table join (enrichment): enrich each stream event with current value from a DB table (e.g., add user profile to click event). Table-table join (materialized view): maintain a running join as both tables receive CDC events. Implementation: requires partitioning both inputs by the join key so matching records land on the same processor. DDIA Ch12."
+        }
       ]
     },
     {
       "name": "API Design",
       "children": [
-        { "name": "API Design Principles" },
-        { "name": "REST APIs" },
-        { "name": "Rate Limiting" }
+        {
+          "name": "API Design Principles",
+          "notes": "Good APIs are consistent (same patterns throughout), minimal (expose what's needed, nothing more), evolvable (backward compatible changes), and intuitive (follows expected conventions). HTTP: use nouns for resources not verbs, standard status codes (200/201/400/404/429/500), meaningful error bodies (machine-readable error code + human-readable message). Versioning strategy from day one. Document with OpenAPI/Swagger. Never break backward compatibility in a released version. Alex Xu throughout; systemdesign42 newsletter."
+        },
+        {
+          "name": "REST APIs",
+          "notes": "Representational State Transfer (Fielding, 2000). Constraints: uniform interface (resources identified by URLs, HTTP verbs as operations), stateless (each request self-contained, no server-side session), cacheable (responses declare cacheability via headers), layered (client doesn't know if talking to origin or proxy). HTTP verbs: GET (read, idempotent), POST (create), PUT (replace, idempotent), PATCH (partial update), DELETE (idempotent). Status codes: 200 OK, 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests, 500 Internal Server Error. DDIA Ch5."
+        },
+        {
+          "name": "Rate Limiting",
+          "notes": "Control request rate to prevent abuse and protect downstream systems. Algorithms: token bucket (bucket fills at rate R, each request consumes a token, allows bursts up to bucket size), leaking bucket (fixed output rate, queue incoming, smooths output), fixed window counter (count per time window, has edge burst problem), sliding window log (timestamp-based, precise), sliding window counter (hybrid, approximate). Alex Xu Ch4: Redis counter store (INCR + EXPIRE), centralized Redis for multi-server sync. Headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Retry-After. HTTP 429 Too Many Requests."
+        },
+        {
+          "name": "API Versioning",
+          "notes": "Strategies: URI versioning (/v1/users, /v2/users), most visible, easy to route, cache-friendly; Header versioning (Accept: application/vnd.api.v2+json), cleaner URLs, less visible; Query parameter (?version=2), simple but pollutes URLs. URI versioning is most widely used (Stripe, Twilio). Never remove or change semantics of existing endpoints in a released version; only add. Deprecation lifecycle: announce, provide migration path, sunset date. systemdesign42 newsletter."
+        },
+        {
+          "name": "Idempotent APIs",
+          "notes": "An API is idempotent if the same request can be safely retried without changing the result beyond the first call. GET, PUT, DELETE are naturally idempotent. POST is not (creates new resource each call). Idempotency key pattern: client generates a UUID and sends it in a header (Idempotency-Key) or body. Server stores the key + result in a DB (with unique constraint); on duplicate key, return stored result without re-executing. Stripe: 48-hour idempotency window. Critical for: payment APIs, any mutation that could be retried due to timeout. systemdesign42 newsletter."
+        },
+        {
+          "name": "Pagination (Cursor vs Offset vs Page Number)",
+          "notes": "Three strategies for paginating large result sets. Offset pagination: LIMIT N OFFSET M \u2014 simple SQL, but slow at large offsets (DB must scan M rows to skip them) and inconsistent if rows are inserted/deleted mid-session. Page number: same issue as offset, just expressed differently. Cursor pagination: uses an opaque pointer (last seen ID or encoded timestamp) as the WHERE clause anchor (WHERE id > :cursor LIMIT N). O(1) regardless of page depth, stable across mutations. Use cursor for infinite scroll (Twitter, Instagram), offset for admin tables with page numbers. Trade-off: cursor pagination can't jump to arbitrary pages."
+        },
+        {
+          "name": "GraphQL",
+          "notes": "API query language from Facebook (2015). Clients specify exactly the fields they need in the request \u2014 no over-fetching (unused fields) or under-fetching (needing a second request). Single endpoint (/graphql), operations: query (read), mutation (write), subscription (real-time via WebSocket). Schema-first: strongly typed SDL defines all types and operations. N+1 problem: naively resolving nested fields makes N queries for N objects; solved by DataLoader (batching + caching per request). Introspection: clients can discover the schema. Used by: GitHub API, Shopify Storefront API, Twitter API v2. Tradeoff vs REST: no HTTP-level caching (POST body is unique per query), more complex server setup. DDIA Ch5 context; systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Security and Auth",
       "children": [
-        { "name": "Authentication vs Authorization" },
-        { "name": "Session-based vs Token-based Authentication" },
-        { "name": "OAuth, OAuth2, OpenID Connect" },
-        { "name": "JWT" },
-        { "name": "Single Sign-On" },
-        { "name": "Role-Based Access Control" },
-        { "name": "Security Secrets Management" }
+        {
+          "name": "Authentication vs Authorization",
+          "notes": "Authentication (AuthN): verify identity: 'who are you?' (username+password, OAuth token, mTLS certificate). Authorization (AuthZ): verify permission: 'what are you allowed to do?' (RBAC roles, ACLs, policy engines). AuthN always happens before AuthZ: you must know who someone is before deciding what they can do. Common mistake: conflating them in middleware. OAuth2 is an AuthZ framework (grant access to resources). OpenID Connect adds AuthN on top of OAuth2 (issue identity tokens). JWT often carries both identity claims and permission scopes."
+        },
+        {
+          "name": "Session-based vs Token-based Authentication",
+          "notes": "Session: server creates session on login, stores in Redis/DB (session ID to user data mapping), returns session cookie. Stateful: requires shared session store for horizontal scaling. Token (JWT): server issues self-contained signed token. Client sends token with each request; server validates signature without DB lookup. Stateless: scales horizontally. Tradeoff: tokens can't be revoked until expiry without a blocklist, which reintroduces state. Short-lived access tokens + long-lived refresh tokens is the standard pattern. systemdesign42 newsletter."
+        },
+        {
+          "name": "OAuth, OAuth2, OpenID Connect",
+          "notes": "OAuth2: authorization framework. Allows user to grant third-party app access to their resources without sharing credentials. Core flows: Authorization Code (browser apps, code exchanged for token server-side, most secure), Client Credentials (service-to-service, no user involved), Device Code (TV/CLI, user authorizes on second device). Tokens: access token (short-lived, API calls), refresh token (long-lived, get new access token). PKCE prevents authorization code interception. OpenID Connect (OIDC): extends OAuth2 with ID token (JWT with user claims: sub, email, name). systemdesign42 newsletter."
+        },
+        {
+          "name": "JWT",
+          "notes": "JSON Web Token: three Base64url-encoded parts separated by dots: Header (algorithm, type), Payload (claims), Signature. Signature: HMAC-SHA256 with secret (symmetric) or RS256 with RSA private/public key pair (asymmetric: issuer signs, validators only need public key). Standard claims: sub (subject/user ID), iss (issuer), exp (expiry Unix timestamp), iat (issued at), aud (audience). Stateless: no DB lookup on verification. JWTs can't be revoked mid-lifetime; mitigate with short exp (15 min) + refresh token. systemdesign42 newsletter."
+        },
+        {
+          "name": "Single Sign-On",
+          "notes": "One login authenticates the user across multiple applications. Identity Provider (IdP) performs authentication and issues tokens/assertions; Service Providers (SPs) trust the IdP and accept its assertions. Protocols: SAML 2.0 (XML-based, enterprise, browser-based SSO via POST bindings: Okta, ADFS), OpenID Connect/OAuth2 (JSON-based, modern: Google, Okta, Auth0). Session management: SP-initiated vs IdP-initiated SSO. Enterprise use: employees log into Okta once, access Salesforce, Slack, GitHub without re-authenticating. systemdesign42 newsletter."
+        },
+        {
+          "name": "Role-Based Access Control",
+          "notes": "Permissions assigned to roles; users and service accounts assigned to roles. Decouples permission management from individual users. Example: roles = Admin, Editor, Viewer; users assigned to roles; role defines which API endpoints/DB rows/S3 buckets are accessible. Principle of least privilege: assign only the permissions needed. ABAC (Attribute-Based Access Control): permissions based on attributes (user department, resource sensitivity, time of day), more flexible but more complex to manage. OPA (Open Policy Agent): policy engine for fine-grained authorization. systemdesign42 newsletter."
+        },
+        {
+          "name": "Security Secrets Management",
+          "notes": "Secrets (API keys, DB passwords, TLS certs) must never be committed to version control or stored in plaintext env vars. Secrets manager: HashiCorp Vault (open-source, dynamic secrets: generates short-lived DB credentials on demand), AWS Secrets Manager (managed, rotation built-in), GCP Secret Manager. Dynamic secrets: Vault creates a short-lived Postgres user for each service instance so no shared long-lived credential. Secret rotation: change secrets on a schedule or on suspected compromise. Service mesh (Istio) handles mTLS cert rotation automatically. systemdesign42 newsletter."
+        },
+        {
+          "name": "API Security Best Practices",
+          "notes": "Authentication on every endpoint (no anonymous access to sensitive data). HTTPS only: no HTTP plaintext. Input validation and parameterized queries (prevent SQL injection, XSS). Rate limiting (prevent brute force and scraping). No sensitive data in query params (logged in access logs). Error messages: return generic errors to client, log details server-side. CORS: restrict Access-Control-Allow-Origin to known domains. OWASP API Security Top 10: broken object-level auth, excessive data exposure, improper inventory management. Validate JWT signature and exp claim. systemdesign42 newsletter."
+        },
+        {
+          "name": "How Databases Store Passwords",
+          "notes": "Never store plaintext passwords. Hashing: one-way function, can't reverse. MD5 and SHA-1: deprecated for passwords (fast = attackable via GPU brute force, rainbow tables). Salt: random unique value prepended to password before hashing, prevents rainbow table attacks and identical passwords from producing identical hashes. bcrypt: intentionally slow (configurable cost factor), built-in salt. scrypt and Argon2: memory-hard (require GB of RAM per hash, prevents GPU/ASIC attacks). Argon2 won the Password Hashing Competition (2015) and is preferred for new systems. Timing-safe comparison to prevent timing attacks. systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Resilience Patterns",
       "children": [
-        { "name": "Circuit Breaker Pattern" },
-        { "name": "Bulkhead Pattern" },
-        { "name": "Strangler Fig Pattern" },
-        { "name": "Backend for Frontend" },
-        { "name": "Sidecar Pattern" },
-        { "name": "Service Mesh" }
+        {
+          "name": "Circuit Breaker Pattern",
+          "notes": "Prevent cascading failures when a downstream service is degraded. States: Closed (normal, requests pass through, failure rate tracked), Open (downstream assumed failed, requests fail fast without calling downstream), Half-Open (after cooldown period, allow one probe request: if it succeeds, close; if it fails, reopen). Failure rate thresholds and window sizes are configurable. Implementations: Netflix Hystrix, resilience4j (Java), Polly (.NET), Envoy/Istio (service mesh). Named after electrical circuit breakers: open = no current flows."
+        },
+        {
+          "name": "Bulkhead Pattern",
+          "notes": "Isolate failures to a partition of the system so one slow dependency can't starve all others. Named after ship bulkhead compartments (watertight walls preventing flooding from spreading). Implementation: separate thread pools or connection pools per dependency. If the Payments service's thread pool is exhausted, requests to Search are unaffected. Resource isolation: separate CPU quotas, memory limits, connection limits per service or tenant. Kubernetes resource requests/limits per container implement bulkheads at the OS level."
+        },
+        {
+          "name": "Strangler Fig Pattern",
+          "notes": "Incremental monolith-to-microservices migration. New functionality built as separate services from day one. Old functionality gradually extracted from monolith into new services. A facade (API gateway, proxy) routes requests to either old monolith or new services. Eventually the monolith is completely replaced and can be decommissioned. Named after the strangler fig tree (Ficus aurea) that grows around a host tree, eventually replacing it. Avoids risky big-bang rewrites. Used by Shopify, Booking.com, Amazon."
+        },
+        {
+          "name": "Backend for Frontend",
+          "notes": "Dedicated API aggregation layer per client type. Mobile BFF: aggregates multiple downstream calls, returns mobile-optimized payload (smaller, fewer fields). Web BFF: different data shape for web. External API BFF: public API contract. Benefits: reduces over-fetching (mobile doesn't need all fields), reduces under-fetching (web gets aggregated data in one call), each BFF can evolve independently. Pattern introduced by Sam Newman in 2015. Downside: code duplication across BFFs, mitigated with shared libraries for common logic."
+        },
+        {
+          "name": "Sidecar Pattern",
+          "notes": "Deploy a helper container alongside the main service container in the same Kubernetes pod. They share the same network (localhost) and volume mounts. Sidecar handles cross-cutting concerns without changing application code: TLS termination, mTLS to other services, Prometheus metrics exposition, log shipping (Fluentd), distributed tracing (Jaeger agent). Service mesh (Istio, Linkerd) injects Envoy sidecar proxies automatically into every pod. Downside: resource overhead per pod and operational complexity. systemdesign42 newsletter."
+        },
+        {
+          "name": "Service Mesh",
+          "notes": "Infrastructure layer for service-to-service communication, implemented via sidecar proxies (Envoy) automatically injected into pods. Provides: mTLS (automatic cert management and rotation), distributed tracing (auto-instrument spans), circuit breaking, retries, timeouts, load balancing, all without application code changes. Control plane: Istio pilot (configuration), Citadel (certs). Data plane: Envoy proxies. Cost: 10-30% CPU overhead per service and operational complexity. Linkerd is a simpler, lighter alternative. systemdesign42 newsletter."
+        },
+        {
+          "name": "Chaos Engineering",
+          "notes": "Discipline of intentionally injecting failures into production systems to discover weaknesses before they cause customer-facing incidents. Netflix Chaos Monkey (2011): randomly terminates EC2 instances in production during business hours. Principles: define steady state (measurable healthy baseline), hypothesize steady state holds under failure, inject failure (random instance kill, network latency, disk full), observe and act if hypothesis fails. Tools: Chaos Monkey, Gremlin, AWS Fault Injection Simulator. systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Observability",
       "children": [
-        { "name": "Observability Fundamentals" },
-        { "name": "Logging" },
-        { "name": "Metrics" },
-        { "name": "Distributed Tracing" },
-        { "name": "Correlation IDs" }
+        {
+          "name": "Observability Fundamentals",
+          "notes": "Ability to understand internal system state from external outputs. Three pillars: Logs (discrete events with context), Metrics (aggregated numeric measurements over time), Traces (end-to-end request flow across services). Observability vs monitoring: monitoring tells you when something is wrong; observability lets you understand why (ask previously unasked questions about system state). OpenTelemetry: open standard for logs, metrics, and traces in a unified API."
+        },
+        {
+          "name": "Logging",
+          "notes": "Record of discrete events. Structured logging (JSON with consistent fields: timestamp, level, service, trace_id, message) vs unstructured text (harder to parse programmatically). Log levels: DEBUG (verbose, dev only), INFO (normal operation events), WARN (unexpected but recoverable), ERROR (action failed, needs investigation). Centralized logging: ship logs to Elasticsearch (ELK stack), Datadog, CloudWatch, Loki. Correlation IDs in logs enable tracing a request across services. Alex Xu Ch1: 'monitor error logs at per-server level or aggregate to a centralized service for easy search.'"
+        },
+        {
+          "name": "Metrics",
+          "notes": "Numeric time-series measurements. Types: Counter (cumulative, monotonically increasing: total requests), Gauge (current value at a point in time: active connections, queue depth), Histogram (distribution of values: request latency percentiles). RED method: Rate (requests/sec), Errors (error rate), Duration (latency). USE method: Utilization, Saturation, Errors. Alex Xu Ch1 three tiers: host-level (CPU/memory/disk I/O), service-level (request rate/error rate/latency), business-level (DAU/revenue). Prometheus scrapes metrics; Grafana visualizes. Datadog, CloudWatch as managed alternatives."
+        },
+        {
+          "name": "Distributed Tracing",
+          "notes": "Track a single request as it flows through multiple services. Each service creates a span (start time, end time, service name, operation name, tags, status). Spans within a trace share a trace ID (propagated in request headers: W3C Trace Context standard or B3). Parent-child relationships form the trace tree. Reveals: which service is slow, which downstream calls are made, where errors originate. Sampling: full sampling is too expensive; head-based (~1%) or tail-based (sample traces with errors/high latency). OpenTelemetry, Jaeger, Zipkin, Datadog APM. systemdesign42 newsletter."
+        },
+        {
+          "name": "Correlation IDs",
+          "notes": "Unique identifier generated at the entry point of a request (API gateway, LB) and propagated through all downstream service calls via HTTP headers. All log lines for a request include the correlation ID, enabling grep/search to reconstruct the full request journey across services. Header names: X-Request-ID (single service context) or X-Correlation-ID / X-Trace-ID (cross-service). Also included in error responses to clients; support can look up the exact request in logs. Essential for debugging production issues in microservices. systemdesign42 newsletter."
+        }
       ]
     },
     {
       "name": "Architecture Patterns",
-      "children": [{ "name": "CQRS" }, { "name": "Event Sourcing" }]
+      "children": [
+        {
+          "name": "CQRS",
+          "notes": "Command Query Responsibility Segregation: separate the write model (Commands: validate business rules, update state, emit domain events) from the read model (Queries: return data in the shape the client needs). Write model: normalized, enforces invariants, owns the source of truth. Read model: denormalized projections optimized for specific queries (e.g., precomputed news feed). Projections rebuilt by replaying events. Benefits: read and write models scale independently; read models can be tuned per use case. Natural fit with Event Sourcing. Complexity: two models to maintain, eventual consistency between write and read. DDIA Ch3 (2nd Ed.)."
+        },
+        {
+          "name": "Event Sourcing",
+          "notes": "Instead of storing current state, store an immutable append-only log of all state-changing events. Current state derived by replaying events from the beginning (or from a snapshot + subsequent events). Benefits: complete audit trail, ability to replay events to rebuild projections or fix bugs, temporal queries ('what was the state at T?'). Challenges: event schema evolution (old events must still be processable), snapshot management for performance, eventual consistency of read projections. DDIA Ch3 (2nd Ed.): event sourcing is a data modeling approach related to immutable logs and derived data. Used by: Axon Framework, Kafka-based event stores."
+        }
+      ]
     },
     {
       "name": "Probabilistic and Specialized Data Structures",
       "children": [
-        { "name": "Checksums" },
-        { "name": "Bloom Filter" },
-        { "name": "Merkle Tree" },
-        { "name": "HyperLogLog" }
+        {
+          "name": "Checksums",
+          "notes": "A checksum is a small fixed-size value derived from data, used to detect accidental corruption. Not for security (use MAC/HMAC for integrity with authentication). CRC32: fast hardware-accelerated, used by filesystems (ext4, ZFS) and network protocols. MD5: broken for cryptographic security but still used for quick integrity checks (S3 object ETags). SHA-256: cryptographically secure, used by Git (content-addressed storage) and TLS. HDFS: checksums each block on write, verifies on read. Corruption detection: if stored checksum != computed checksum -> data corruption detected -> fetch from replica. systemdesign42 website."
+        },
+        {
+          "name": "Bloom Filter",
+          "notes": "Probabilistic set membership data structure. Extremely space-efficient: represents a set of N items in M bits. Operations: insert(x): hash x with k hash functions, set k bits; contains(x): check if all k bits are set. False positives possible (might say 'present' for items not in the set). False negatives impossible (if all bits not set, definitely absent). False positive rate tunable: more bits = lower FPR. Use cases: Cassandra (check if SSTable might contain a key before disk read, reduces I/O), Chrome Safe Browsing, Postgres planner, CDN duplicate URL detection. systemdesign42 website."
+        },
+        {
+          "name": "Quotient Filter",
+          "notes": "Alternative to Bloom Filter with better cache performance. Stores a compact fingerprint of each element in a contiguous array (better cache locality than Bloom's multiple scattered bit arrays). Supports: merge of two filters, resize without rehashing (can grow dynamically). Slightly higher false positive rate for same memory vs Bloom. Better for: dynamic workloads that need resizing, systems where cache efficiency matters. Less widely implemented than Bloom in practice. systemdesign42 website."
+        },
+        {
+          "name": "Merkle Tree",
+          "notes": "Binary tree where each leaf node contains the hash of a data block, and each internal node contains the hash of its children. Root hash represents the entire dataset. Properties: tamper-evident (changing one block changes all ancestor hashes up to root), efficient comparison (compare root hashes first, recurse only into differing subtrees). Use cases: Git (each commit is a Merkle tree of the file tree, content-addressed, deduplication), Bitcoin (transactions in a block form a Merkle tree), Cassandra/DynamoDB anti-entropy (compare Merkle trees of partition data to find diverged replicas without full data transfer). systemdesign42 website."
+        },
+        {
+          "name": "HyperLogLog",
+          "notes": "Probabilistic algorithm for estimating the count of distinct elements in a stream. Uses only ~1.5KB of memory regardless of input size with ~2% standard error. Algorithm: hash each element, observe leading zeros in binary hash, keep maximum across many sub-estimators, combine via harmonic mean. Redis: HyperLogLog is a first-class type (PFADD to add element, PFCOUNT for cardinality, PFMERGE to union). Use cases: counting unique visitors, distinct IP addresses, unique search queries in analytics pipelines. When exact count not needed and memory matters. systemdesign42 website."
+        }
+      ]
+    },
+    {
+      "name": "Deployment and Operations",
+      "children": [
+        {
+          "name": "Deployment Patterns",
+          "notes": "Strategies for delivering new code to production safely. Key concerns: minimize downtime, limit blast radius, enable fast rollback. Rolling: replace instances one at a time; some users get old version, some get new version simultaneously. Blue-Green: two identical environments; switch traffic all at once; instant rollback. Canary: route small traffic percentage (1-5%) to new version; monitor; promote or rollback. Feature flags: ship code behind an off switch; enable gradually. Shadow deployment: send copy of production traffic to new version without serving responses. systemdesign42 newsletter."
+        },
+        {
+          "name": "Blue-Green Deployment",
+          "notes": "Maintain two identical production environments: Blue (current live) and Green (new version). Deploy new version to Green; run smoke tests. Switch all traffic at LB/DNS level from Blue to Green. Instant rollback: switch back to Blue. Benefits: zero-downtime deployment, immediate rollback capability. Costs: 2x infrastructure (both environments must be production-sized), data migration complexity (both environments share DB or need sync). Used by: AWS Elastic Beanstalk, Spinnaker. Best for stateless services; databases complicate blue-green since schema migrations must be backward compatible with both versions. systemdesign42 newsletter."
+        },
+        {
+          "name": "Canary Deployment",
+          "notes": "Route a small percentage of production traffic (1-5%) to the new version while the majority continues to the old version. Monitor error rate, latency, and business metrics on the canary. If canary is healthy after a validation period, gradually increase to 25%, 50%, 100%. If metrics degrade, immediately roll back the canary percentage to 0%. Named after the mining practice of bringing a canary into coal mines to detect toxic gases. Tools: Spinnaker, Argo Rollouts, Flagger (Kubernetes), AWS CodeDeploy. Netflix uses sophisticated canary analysis with automated promotion/rollback. systemdesign42 newsletter."
+        },
+        {
+          "name": "Feature Flags",
+          "notes": "Toggle features on/off in production without deploying new code. Stored in a config service (LaunchDarkly, Unleash, Statsig) evaluated at runtime. Use cases: gradual rollout (enable for 1% of users, then 10%, then 100%), A/B testing (random 50/50 split), kill switch (disable a broken feature instantly), permission gates (enable only for beta users). Decouple deployment from release: ship code anytime, control feature visibility separately. Risk: flag debt: old flags never cleaned up become code complexity. systemdesign42 newsletter."
+        },
+        {
+          "name": "Infrastructure as Code",
+          "notes": "Define and provision infrastructure via code, stored in version control. Declarative: describe desired state; tool handles creating/updating/destroying resources (Terraform, AWS CDK, Pulumi). Imperative: describe steps to reach desired state (Ansible playbooks). Terraform: cloud-agnostic, provider plugins for AWS/GCP/Azure, plan (dry run) + apply workflow, state file tracks what's deployed. Benefits: reproducibility (identical environments from same code), PR review for infra changes, rollback via git revert. DDIA Ch2: 'operability: automation is a key property of maintainable systems.'"
+        }
+      ]
+    },
+    {
+      "name": "Concurrency",
+      "children": [
+        {
+          "name": "Concurrency vs Parallelism",
+          "notes": "Concurrency: dealing with multiple tasks simultaneously by interleaving execution (a single-core CPU switching between tasks). Structure, not execution. Parallelism: physically executing multiple tasks at the same time on multiple CPU cores. Execution, not structure. A concurrent design does not imply parallel execution (may run on single core). Rob Pike (Go creator): 'Concurrency is not parallelism: concurrency is about structure, parallelism is about execution.' Go's goroutines: concurrent by design, parallel if GOMAXPROCS > 1. systemdesign42 newsletter."
+        },
+        {
+          "name": "Actor Model",
+          "notes": "Concurrency model where actors are the fundamental unit. Each actor has: private state (no shared memory), a mailbox (message queue), and behavior (processes one message at a time). Actors communicate only via async message passing: no shared mutable state = no race conditions, no locks. On receiving a message, an actor can: update its state, send messages to other actors, create new actors. Erlang/Elixir: actors = processes, lightweight, millions per node. Akka (JVM). PayPal: 1 billion transactions/day on 8 VMs using Akka actor model. systemdesign42 newsletter."
+        },
+        {
+          "name": "Thread-Based Concurrency",
+          "notes": "OS threads scheduled by the kernel. Each thread has its own stack (1-8MB). Synchronization via: mutexes (mutual exclusion locks), semaphores, condition variables. Problems: race conditions (unsynchronized access to shared state), deadlocks (circular lock acquisition), context switch overhead (~1-10 microseconds). Apache HTTPd: thread-per-request model, one thread per connection. Limits: high memory overhead at scale (10k connections x 2MB stack = 20GB RAM). Java virtual threads (JDK 21, Project Loom): lightweight threads mapped M:N to OS threads, millions of virtual threads without the overhead."
+        },
+        {
+          "name": "Event Loop Model",
+          "notes": "Single-threaded event loop dispatches I/O events to registered handlers. Non-blocking I/O: instead of blocking for DB response, register callback and process other events while waiting. When I/O completes, callback is queued. Never blocks the event loop on I/O or CPU-heavy work. Node.js: JavaScript event loop + libuv for async I/O. NGINX: event-driven, handles 1M+ concurrent connections on one server via non-blocking epoll (Linux) vs Apache's thread-per-connection model. Redis: single-threaded event loop for command processing, no lock contention. Weakness: CPU-bound tasks block the event loop; use worker threads for CPU work. systemdesign42 newsletter."
+        }
+      ]
+    },
+    {
+      "name": "AI Engineering",
+      "children": [
+        {
+          "name": "LLM Concepts",
+          "notes": "Large Language Models: neural networks trained to predict the next token given a context. Key concepts: context window (max tokens the model can process in one call: GPT-4 128k, Claude 200k); temperature (0 = deterministic/greedy; 1+ = more random, creative); top-p / top-k (nucleus/top-k sampling limits the token pool); tokens (roughly 3-4 characters; pricing is per token). Not a knowledge database: it is a probability model over token sequences. Hallucination: confident generation of plausible but false content. document2.pdf (goflash): 'LLM predicts next token based on training patterns, not a knowledge database.' systemdesign42 newsletter."
+        },
+        {
+          "name": "Retrieval-Augmented Generation (RAG)",
+          "notes": "Reduce hallucinations and inject current knowledge by retrieving relevant documents at query time and including them in the prompt. Pipeline: (1) Offline: chunk documents, embed with embedding model (text-embedding-3-small), store vectors in vector DB. (2) Online: embed user query, similarity search in vector DB (HNSW/ANN), retrieve top-K chunks, inject chunks into prompt as context, LLM generates answer grounded in retrieved context. Tradeoffs: retrieval quality determines answer quality; chunk size and overlap affect context coherence; re-ranking (cross-encoder) improves relevance at extra cost. systemdesign42 newsletter."
+        },
+        {
+          "name": "AI Agents",
+          "notes": "LLM given tools (web search, code execution, API calls, file read/write) and instructions to complete multi-step tasks autonomously. ReAct (Reasoning + Acting) loop: LLM reasons about the task, calls a tool (Action), observes the result, reasons again. Challenges: long context degrades quality; tool call hallucinations; multi-step error accumulation; cost (each step is an API call). Two agent patterns: single-agent (one LLM with many tools), multi-agent (specialized LLMs calling each other). Memory: in-context (retrieved each turn), external (vector DB for long-term). systemdesign42 newsletter."
+        },
+        {
+          "name": "Model Context Protocol (MCP)",
+          "notes": "Open standard by Anthropic (2024) for connecting LLMs to external tools and data sources. Architecture: MCP hosts (Claude Desktop, IDEs) connect to MCP servers via JSON-RPC over stdio or HTTP/SSE. MCP servers expose: tools (callable functions), resources (readable data), prompts (template strings). Enables: composable AI integrations without bespoke plugin code per tool. Any MCP server works with any MCP-compatible host. Growing ecosystem: GitHub, Google Drive, Slack, Postgres all have MCP servers. systemdesign42 newsletter."
+        },
+        {
+          "name": "Context Engineering",
+          "notes": "The discipline of designing the full information environment the model sees: system prompt, conversation history, retrieved documents, tool results, memory. Karpathy: 'the delicate art and science of filling the context window with just the right information for the next step.' Key principles: relevant > comprehensive (cutting noise improves quality), structured context (JSON/XML with clear labels), recency bias (recent context more influential), token budget management. Distinct from prompt engineering: context engineering manages the entire state, not just the wording. systemdesign42 newsletter, document2.pdf."
+        },
+        {
+          "name": "Context Engineering vs Prompt Engineering",
+          "notes": "Prompt engineering: improving individual prompts, word choice, few-shot examples, chain-of-thought instructions. Context engineering: designing the entire information environment across a session: what goes in the system prompt, how memory is retrieved, how tool results are formatted, how conversation history is managed. Prompt engineering is a subset of context engineering. For simple single-turn tasks, prompt engineering is enough. For complex multi-turn agentic systems (like production AI assistants), context engineering is the critical discipline. systemdesign42 newsletter."
+        },
+        {
+          "name": "Reinforcement Learning",
+          "notes": "Agent learns by taking actions in an environment and receiving reward signals. Key components: state (current situation), action (choice the agent makes), reward (feedback signal), policy (mapping from state to action). RLHF (Reinforcement Learning from Human Feedback): humans rank model outputs; a reward model is trained on rankings; the LLM is fine-tuned to maximize the reward model's scores via PPO (Proximal Policy Optimization). Used to align GPT-4, Claude, Gemini with human preferences. DPO (Direct Preference Optimization): simpler alternative that bypasses the reward model. systemdesign42 newsletter."
+        },
+        {
+          "name": "AI Coding Workflows",
+          "notes": "Patterns for using AI models (GitHub Copilot, Cursor, Claude Code) to accelerate software development. Key patterns: inline completion (autocomplete as you type), chat-driven development (describe what you want, get code), test-first generation (write test, ask AI to implement), iterative refinement (start broad, refine in turns). document2.pdf (goflash): Claude used to design the app architecture; DeepSeek used to generate flashcard content. Key insight from document.pdf: structured prompts with explicit output format (JSON only, no preamble) + temperature near 0 give reliable structured output. systemdesign42 newsletter."
+        }
+      ]
+    },
+    {
+      "name": "Software White Papers",
+      "children": [
+        {
+          "name": "Amazon Dynamo Architecture",
+          "notes": "2007 paper: Amazon's highly available KV store for shopping cart (70% of Amazon operations needed only simple KV model). Techniques combined: consistent hashing (ring with virtual nodes for even distribution and minimal remapping), quorum reads/writes (R+W>N, tunable consistency), vector clocks (detect concurrent writes for conflict resolution), hinted handoff (write to healthy node when target is down, deliver on recovery), gossip protocol (membership and failure detection without central coordinator), Merkle trees (anti-entropy: compare hash trees to find diverged data efficiently). AP system: chose availability over consistency. DDIA Ch6 is heavily influenced by this paper. Foundation of Cassandra, Riak, DynamoDB. systemdesign42 newsletter."
+        },
+        {
+          "name": "Google Spanner",
+          "notes": "Google's globally distributed relational database. Novel contribution: TrueTime: GPS receivers and atomic clocks at every datacenter provide timestamps with guaranteed bounded uncertainty (plus or minus 7ms). Spanner exposes TrueTime API: TT.now() returns [earliest, latest] interval. Transactions: commit waits until TT.now().earliest > commit timestamp, guarantees linearizability across globally distributed transactions. Architecture: zones (physical deployments), Paxos groups per shard, tablets for data partitioning. Supports: SQL, multi-row ACID transactions, globally consistent reads at a timestamp. GCP Cloud Spanner is the managed version. systemdesign42 newsletter."
+        },
+        {
+          "name": "Meta XFaaS (Serverless Architecture)",
+          "notes": "Meta's stateless and stateful Function-as-a-Service platform (2023 paper). Problem: cold starts in traditional serverless add hundreds of ms of latency for ML inference and event processing. Solutions: worker pre-warming (keep warm worker pool ready, assign on invocation), function pinning (keep hot functions resident in memory), co-location with storage (functions run near their data). Stateful extension: functions can read/write durable state across invocations. Key insight: serverless can work for latency-sensitive workloads with pre-warming. systemdesign42 newsletter."
+        }
+      ]
+    },
+    {
+      "name": "System Design Case Studies",
+      "children": [
+        {
+          "name": "Classic Design Problems",
+          "children": [
+            {
+              "name": "URL Shortener (Bitly)",
+              "notes": "Core: hash long URL to a short alphanumeric code (base62, 7 chars = 62^7 = 3.5T combinations). Storage: KV store mapping code to long URL. Redirect: HTTP 301 (permanent, browser caches, no analytics on repeat visits) vs 302 (temporary, every click hits server, enables analytics). Write path: generate unique code (hash function, or random + collision check), write to DB. Read path: lookup code, return redirect. Scale: very high read:write ratio (reads >> writes) -> heavy caching in Redis. Custom aliases: check availability, store directly. Analytics: log redirects to Kafka for downstream aggregation. Alex Xu Ch8."
+            },
+            {
+              "name": "Pastebin",
+              "notes": "Store arbitrary text content with a short shareable URL. Architecture: content stored in object storage (S3), large, binary-safe; metadata (paste ID, creation time, expiry, author, visibility) in relational DB. Key generation: same approach as URL shortener (base62 random ID). TTL: option for pastes to auto-expire via S3 lifecycle rules or DB job. Scale: write-once read-many; CDN for popular public pastes. Similar to URL shortener for ID generation; the main difference is storing actual content vs a URL mapping. systemdesign42 website."
+            },
+            {
+              "name": "Distributed Counter",
+              "notes": "Count events at high write throughput (likes, views, clicks, impressions). Naive: single DB counter (bottleneck at high QPS). Approaches: Redis INCR (atomic, single shard, bottleneck at ~100k/sec), sharded counters (maintain N counters, increment random shard, aggregate on read, write throughput scales to N*100k/sec but read is expensive), approximate counting with HyperLogLog for distinct counts. Consistency tradeoff: exact counts require coordination; approximate counts (~1% error) are often acceptable for engagement metrics. systemdesign42 website."
+            },
+            {
+              "name": "Real-Time Gaming Leaderboard",
+              "notes": "Rank players by score globally or within a group. Redis Sorted Set (ZSET): ZADD O(log N), ZRANK O(log N), ZRANGE O(log N + M). Exact real-time global ranking for all players. For hyperscale: shard by game/region; each shard has a top-N leaderboard, aggregate top-N across shards for global leaderboard (approximate). Leaderboard windows: all-time, weekly, daily; use separate ZSETs per window and expire daily/weekly ones via TTL. Nearby ranks: ZRANGEBYSCORE around a player's score. systemdesign42 website."
+            },
+            {
+              "name": "Real-Time Live Comments",
+              "notes": "Broadcast user comments to all viewers of a live stream simultaneously. WebSocket connections for low latency vs polling. Fan-out to O(N) concurrent viewers is the core challenge. Small scale: Redis Pub/Sub: comment published to channel, all subscribers receive via WebSocket. Large scale (millions): comments ingested to Kafka topic (partitioned by stream ID), consumer pool of WebSocket servers subscribe to relevant partition and push to connections. Rate limiting: prevent spam (N comments per second per user). Profanity filtering: async, publish and filter in parallel. systemdesign42 website."
+            },
+            {
+              "name": "Real-Time Presence Platform",
+              "notes": "Know which users are online, offline, or idle. Heartbeat approach: client sends heartbeat every 5s; server records last_seen in Redis with TTL=15s. If TTL expires, user is offline. Scale: at 100M users * 5s = 20M heartbeats/sec. Shard presence by user_id consistent hash across presence servers. Change propagation: when a user's status changes, publish to Redis Pub/Sub or Kafka so all subscribers (friends, chat rooms) receive the update. Fan-out: user with 10k followers; push-on-write for small followings, pull-on-read for large followings. systemdesign42 website."
+            },
+            {
+              "name": "Virtual Waiting Room",
+              "notes": "Metered access to high-demand resources (concert ticket sales, flash sales). Queue users behind a virtual room; grant access tokens as capacity opens. SeatGeek architecture: users enter queue via Redis sorted set (ZADD with timestamp as score = FIFO). Worker process pops from front, issues signed access tokens (JWT with expiry). Access token verified at checkout: expired or missing = back to queue. Anti-cheat: prevent users from holding multiple queue positions. Prevents site overload by controlling how many users are in the purchase flow simultaneously. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Communication Systems",
+          "children": [
+            {
+              "name": "Design WhatsApp / Chat System",
+              "notes": "Core components: real-time messaging (WebSocket for active users, push notifications for offline), message storage (Cassandra: write-heavy, time-ordered, 50B messages/day), message status (sent -> delivered -> read, three DB updates per message). Group messaging: fan-out when message received. Media: stored in object storage (S3), CDN for fast delivery. End-to-end encryption: Signal Protocol (Double Ratchet). WhatsApp: 50B messages/day with only 32 engineers using Erlang actor model where each conversation is a gen_server actor. Alex Xu Ch12, systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Slack",
+              "notes": "Channel-based persistent messaging. WebSocket per client for real-time. Channel as pub/sub topic: messages published to channel, all channel members receive. Message storage: Cassandra (time-ordered, high write throughput). Search: Elasticsearch for message full-text search. Presence: heartbeat-based per user. File sharing: S3 + CDN, preview generation as async job. Compliance: message retention policies for regulated industries. Scale: Slack uses WebSocket load balancers that maintain connection state. At 10M+ DAU, fan-out for large channels is expensive: limit max channel size or use lazy fan-out. systemdesign42 website."
+            },
+            {
+              "name": "Design WeChat",
+              "notes": "1.67B monthly users. Super-app: IM + Moments (social feed) + Mini Programs + WeChat Pay. IM: MSYNC protocol for client-server sync (client pulls on reconnect). Moments: push-on-write for normal users, pull-on-read for celebrities. WeChat Pay: required distributed transactions for red packet (peer-to-peer payment to groups), all-or-nothing transfer under high concurrency. Multi-DC active-active replication. Mini Programs: sandboxed JS apps running inside WeChat client, an ecosystem of millions of apps without App Store distribution. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Zoom / Video Calls",
+              "notes": "WebRTC for 1:1 calls: P2P, low latency, no media server needed. For group calls (3+): SFU (Selective Forwarding Unit): each participant uploads one stream, SFU selects and forwards relevant streams to each viewer. Alternatively MCU (Multipoint Control Unit): mixes all streams server-side into one composite; simpler for clients but high server CPU. Zoom: 300M daily meeting participants; audio goes over UDP (loss-tolerant), signaling over TCP/WebSocket. WebRTC TURN servers for NAT traversal. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Content and Media",
+          "children": [
+            {
+              "name": "Design YouTube / Video Streaming",
+              "notes": "Upload pipeline: async transcoding into multiple resolutions (360p, 720p, 1080p, 4K) and codecs (H.264, AV1). Storage: raw video in S3, encoded chunks in S3, metadata in relational DB (MySQL at YouTube). CDN: encoded chunks served from edge. Adaptive bitrate streaming (HLS/DASH): client dynamically switches quality based on bandwidth. Recommendation: ML pipeline (collaborative filtering, watch history). Scale: YouTube 2.49B users on MySQL scaled via Vitess (sharding middleware). Alex Xu Ch14, systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Netflix",
+              "notes": "CDN is the core product: Netflix Open Connect deploys custom appliances (OCAs) in ISP data centers and PoPs globally. 99% of traffic served from OCA edge cache. Microservices on AWS (~700 services). Chaos Engineering: Chaos Monkey, Chaos Kong (terminate entire region). Encoding: Netflix encodes each title hundreds of times at different bitrates and resolutions. Recommendation: offline collaborative filtering + real-time session features. Resiliency: every service assumes its dependencies will fail. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Instagram",
+              "notes": "Scaled from 0 to 2.5B users. Storage: photos/videos in S3 + CDN. Metadata: PostgreSQL sharded via Citus. Hot data: Redis for follower lists and activity feeds. Feed generation: push-on-write for regular users (fan-out writes to follower feeds on post); pull-on-read for celebrities with millions of followers (too expensive to fan out). Hybrid: push for most users, pull + merge at read time for celebrity posts. Django web tier, Celery for async tasks. Key lesson: simple infrastructure (Postgres, Redis, S3) scaled further than expected before requiring distributed systems complexity. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Giphy / CDN",
+              "notes": "Giphy: 10B GIFs/day to 1B users. Architecture is fundamentally a CDN problem: GIFs are large (1-5MB), access is global, top GIFs are very hot (Pareto distribution). Origin: GIFs stored in S3 or object storage. CDN: edge nodes cache popular GIFs geographically near users with long TTLs since GIFs are immutable. Search: Elasticsearch for GIF metadata (tags, source, trending score). API: lightweight metadata API returns CDN URLs, not the GIF bytes directly. CDN cache hit rate > 99% for popular content. Alex Xu Ch1 CDN section, systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Google Docs / Real-Time Collaboration",
+              "notes": "Real-time sync challenge: concurrent edits from multiple users. Two approaches: Operational Transformation (OT): transform conflicting operations to preserve intent (Google Docs uses OT); CRDTs (Conflict-free Replicated Data Types): merge-friendly data structures that converge without coordination (Figma, Notion use CRDTs). Architecture: WebSocket/RSocket for real-time transport; all operations sent to a central server which applies OT and broadcasts to all clients. Document state persisted in DB; operations logged for undo history. Canva: RSocket for 135M monthly users on real-time collaboration. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Spotify",
+              "notes": "Music streaming with offline support. Tracks: stored as encrypted audio files in S3 + CDN, multiple bitrates (96kbps to 320kbps). Client caches tracks locally for offline mode. Discovery: collaborative filtering (matrix factorization, deep learning) + editorial playlists. Scale: personalized recommendations for 600M users. System design focus: CDN for low-latency audio delivery, search with Elasticsearch, recommendation pipeline (offline batch + online feature serving), content licensing DRM. systemdesign42 System Design Interview section."
+            }
+          ]
+        },
+        {
+          "name": "Search and Discovery",
+          "children": [
+            {
+              "name": "Design Google Search / Web Crawler",
+              "notes": "Crawler: BFS from seed URLs, URL frontier queue, politeness (robots.txt, crawl-delay, per-domain rate limits), duplicate detection (simhash for near-duplicate pages). Indexer: parse HTML, extract text and links, tokenize, build inverted index (term -> posting list of docID + TF). Ranking: PageRank (link graph authority) + TF-IDF + 200+ signals. Scale: ~100B web pages, PB of index. Distributed inverted index across thousands of machines. Query serving: query understanding (spell correction, entity recognition), index lookup, scoring, result serving. Alex Xu Ch9, systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Airbnb",
+              "notes": "Search: Elasticsearch for listing search with geo queries (geohash or geo_distance filter), faceted filters (price, amenities, dates). Availability check: calendar model, availability table with listing_id + date + status. Booking: distributed transaction problem, reserve dates (optimistic locking, version column) and charge payment atomically. Pricing: dynamic pricing engine, per-night price rules. Messaging: host-guest messaging (chat system). Photos: S3 + CDN + async image processing. Review system: both parties review after stay. systemdesign42 System Design Interview section."
+            },
+            {
+              "name": "Design Twitter/X Timeline",
+              "notes": "Fan-out problem: celebrity with 100M followers tweets. Approaches: push (write tweet to follower feeds at write time, fast reads, expensive writes), pull (read and merge followed users' tweets at read time, slow reads, cheap writes), hybrid (push for regular users with < N followers; pull + merge for celebrities). Implementation: Redis for timeline cache (sorted set by timestamp), Cassandra for tweet storage. QPS: 150k tweets/sec write, 600k timeline reads/sec. Alex Xu Ch11 (news feed). systemdesign42 System Design Interview section."
+            },
+            {
+              "name": "Design Reddit",
+              "notes": "Community-based content voting and commenting. Posts: subreddit feed sorted by hot/top/new/controversial score. Upvote/downvote: atomic counter increment in Redis or DB. Hot ranking: Wilson score or Reddit's own algorithm (log(votes) + time decay). Comment threading: nested comments stored as adjacency list; rendered as trees. Real-time: WebSocket for live comment updates. Scale: media stored in S3, CDN for thumbnails. Search: Elasticsearch over posts and comments. Moderation: ML models + human mods. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design ChatGPT",
+              "notes": "Core: LLM inference API + chat history persistence. Components: chat session management (session ID to conversation history in DB or KV store), streaming responses (Server-Sent Events for token-by-token delivery), context window management (truncate/summarize history when approaching token limit), model serving (GPU clusters, load balanced, auto-scaling). Scale challenges: LLM inference is expensive (GPU compute), latency is inherently high (~1-5 tokens/sec), connection management for long SSE streams. RAG extension: vector DB for knowledge retrieval before LLM call. systemdesign42 System Design Interview section."
+            }
+          ]
+        },
+        {
+          "name": "Payments and Commerce",
+          "children": [
+            {
+              "name": "Design Uber / Ride-Sharing",
+              "notes": "Geo-indexing: geohash (encode lat/lng to base32 string, nearby locations share prefix) or Google S2 cells for driver location queries. Matching: find nearest available drivers within radius via KD-tree or geospatial DB query. Dispatch: WebSocket to notify driver; push notification fallback. ETA: Dijkstra on road graph with live traffic weights; Uber computes 500k ETAs/sec. Surge pricing: supply/demand ratio per geohash cell triggers multiplier. Trip state machine: requested -> accepted -> picked up -> completed -> rated. Payments: idempotency keys prevent double charges. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design a Payment System",
+              "notes": "Core requirements: no double charges (idempotency), no lost payments (durability), regulatory compliance (PCI-DSS). Double-spend prevention: idempotency key per payment attempt (UUID from client); server checks if key was previously processed before executing. Atomicity: debit + credit in same DB transaction or via 2PC across services. Payment gateway integration: Stripe, Braintree, Adyen; async webhook callbacks for payment status. Reconciliation: nightly batch job compares internal state with bank settlement files and detects discrepancies. Uber: 30M transactions/day, ~400 transactions/sec. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design Shopify / Flash Sales",
+              "notes": "Flash sales create 100x+ normal traffic spikes. Rate limiting per store: token bucket to prevent one merchant's flash sale from affecting others. Inventory reservation: optimistic locking (version column on inventory row, retry on conflict) or Redis atomic DECR (DECR to 0, reject if negative). Cart and checkout: Redis for fast cart storage. CDN: cache product pages aggressively, invalidate on price/inventory changes. Shopify uses a modular monolith (not microservices) to minimize distributed systems complexity. systemdesign42 newsletter."
+            },
+            {
+              "name": "Design a Stock Exchange",
+              "notes": "Matching engine: order book (bid + ask sides, sorted by price then time: price-time priority). Each symbol has its own order book. Matching engine is single-threaded to avoid concurrency complexity. LMAX Disruptor pattern: lock-free ring buffer (pre-allocated array), multiple producer single consumer, avoids GC pressure, achieves sub-microsecond latency. Market data: UDP multicast for broadcasts (best effort, clients reconstruct from sequence numbers + full snapshot). Order types: market, limit, stop, stop-limit. systemdesign42 newsletter three-part series."
+            },
+            {
+              "name": "Design Apple Pay",
+              "notes": "NFC payment: device emulates a payment card. Tokenization: real card number replaced by a Device Account Number (DAN) stored in Secure Enclave. Each transaction: biometric auth (Face ID/Touch ID), generates a one-time dynamic security code (cryptogram). Payment network: DAN + cryptogram sent to Apple servers -> payment network (Visa/Mastercard) -> bank -> authorization. Privacy: merchant never sees real card number. Scale: 41M transactions/day. Secure Enclave: dedicated security chip, isolated from main processor. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Scalability Case Studies",
+          "children": [
+            {
+              "name": "Scaling to 10M Users on AWS",
+              "notes": "Progressive architecture evolution from Alex Xu Ch1: (1) Single server (web + DB together). (2) Add DB server (separate web and data tiers). (3) Add load balancer + second web server (HA + horizontal scale). (4) Add DB read replicas (scale reads). (5) Add cache tier (Redis for hot data). (6) Add CDN (static assets). (7) Shard DB (scale writes). (8) Multiple data centers (global HA). Key AWS services: EC2, RDS (read replicas), ElastiCache, CloudFront, Route53 (geoDNS), S3. Each step driven by a specific bottleneck. Alex Xu Ch1, systemdesign42 newsletter."
+            },
+            {
+              "name": "How Facebook Scaled Live Video",
+              "notes": "Live video is fundamentally different from on-demand (can't be precomputed or CDN-prefetched). Architecture: ingestion servers accept RTMP streams, transcode in real-time to multiple bitrates, push chunks to CDN edge servers. Fan-out: popular live streams (major sports events) can spike to millions of concurrent viewers in seconds. Edge caching: live chunks have short TTL (2-10 seconds) but cached at CDN edge. Adaptive bitrate: clients request appropriate quality based on network conditions. Flash crowds: reserve extra CDN capacity for scheduled events. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Cloudflare Handles 55M Requests/sec",
+              "notes": "Anycast routing: every Cloudflare IP is announced from 300+ PoPs; traffic routed to nearest PoP. NGINX at edge: event-driven, handles 1M+ concurrent connections per instance. Only 15 Postgres clusters for all metadata despite 55M req/sec because 99%+ of requests are served entirely from edge cache without hitting origin or DB. PgBouncer for connection pooling to Postgres. Lua scripting in NGINX for edge logic. Key insight: the extreme cache hit rate means the database load is tiny relative to edge traffic. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Meta Achieves Cache Consistency",
+              "notes": "Meta's TAO (The Associations and Objects) serves social graph data. 99.99999999% cache consistency. Problem: ensuring cache is up-to-date across regional data centers with millions of cache servers. Solution: lease-based invalidation (cache server issues a lease token when missing data, prevents thundering herd), hierarchical caching (local -> regional -> origin), read-after-write consistency via regional replication. Cache invalidation pipeline: DB write -> invalidation message on Memcache invalidation channel -> all relevant caches cleared. systemdesign42 newsletter."
+            },
+            {
+              "name": "Amazon Prime Video Microservices Failure",
+              "notes": "2023 blog post: Prime Video monitoring team initially built a microservices architecture on AWS Step Functions. At scale, costs were too high (~$17k/month for one feature). Root cause: Step Functions charged per state transition; monitoring pipeline made thousands of transitions per second per video stream. Solution: consolidated into a single monolith process, reducing costs by 90%. Key lesson: microservices are not always the right choice. Start with the simplest architecture; only distribute when you have a clear reason. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Figma Scaled Postgres to 4M Users",
+              "notes": "Figma's multiplayer collaborative design required real-time DB writes for every cursor move and shape change. Started on a single Postgres instance. Scaling steps: vertical scaling (larger RDS), then PgBouncer for connection pooling (Postgres has ~100 connection limit without pooler), then read replicas for analytics queries, then partitioning hot tables by date. Avoided sharding for a long time by optimizing queries and caching aggressively in Redis. Key insight: Postgres scales further than people expect with proper pooling and indexing. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Dropbox Scaled to 100K Users",
+              "notes": "Launched on Hacker News (2007), 75k signups in 24 hours. Initial architecture: Python/Django monolith, single MySQL DB, S3 for file storage. Scaling steps: (1) SQLite -> MySQL. (2) Added memcached for session and metadata caching. (3) Added read replicas. (4) Background job processing with Celery/RQ. (5) Split monolith into services (metadata service, block server). Key insight: Dropbox is fundamentally a file synchronization problem; block-level deduplication (Rsync-style deltas) reduced storage and bandwidth dramatically. systemdesign42 newsletter."
+            },
+            {
+              "name": "How LinkedIn Scaled to 930M Users",
+              "notes": "Pioneered many distributed systems patterns now commonplace. Key decisions: migrated from Oracle to Espresso (in-house NoSQL DB) and Voldemort (KV store). Kafka originated at LinkedIn for activity stream processing. Rest.li: internal REST framework. Caching: Proxy Cache then Redis. Protocol Buffers replaced JSON for service-to-service calls: 60% latency reduction. Helix: cluster management framework open-sourced from LinkedIn. Feed ranking: offline feature engineering + online serving via a scoring service. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Tinder Scaled to 1.6B Swipes per Day",
+              "notes": "Core algorithm: show potential matches nearby. Geo-queries: PostGIS or Elasticsearch geo queries filtered by distance and preferences. Profile storage: Cassandra for user profiles (high write throughput). Photos: S3 + CDN. Matching: when both users swipe right, notification sent. Message: chat system on top of Kafka. Scaling swipes: 1.6B swipes/day = ~18.5k/sec. Redis for active user sessions and recommendation cache. Recommendation engine: collaborative filtering + preference model. systemdesign42 newsletter."
+            },
+            {
+              "name": "How Discord Handles 30TB/day",
+              "notes": "Discord stores messages in Cassandra (time-ordered, append-heavy, horizontally scalable). 30TB/day of message data stored. WebSocket connections for real-time: millions of concurrent connections across WebSocket servers. Voice/video: custom WebRTC infrastructure with regional media servers. Presence: custom presence system that scales to millions of simultaneous users via in-memory state + gossip. Read States: track last-read position per user per channel, extremely write-heavy at scale. Go backend for WebSocket handling (goroutines). systemdesign42 newsletter."
+            },
+            {
+              "name": "How Disney+ Scaled to 11M Users on Launch Day",
+              "notes": "Disney+ launched November 2019 and immediately saw 10x projected traffic. Architecture: AWS-based, microservices. Buffering issues on day one traced to: concurrent session limits being too low (fixed within hours), CDN capacity exhaustion in some regions (CDN partners scaled rapidly). Key lesson: load test to 2x expected capacity; capacity plan for viral spikes. Progressive rollout: started with smaller markets (Netherlands) before US launch to discover issues. Graceful degradation: some features degraded rather than full outage. systemdesign42 newsletter."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "System Design Interview Framework",
+      "children": [
+        {
+          "name": "How to Approach System Design Interviews",
+          "notes": "4-step framework from Alex Xu Ch3: Step 1: Understand the problem and establish design scope (3-10 min): ask clarifying questions, define functional and non-functional requirements, agree on scope. Step 2: Propose high-level design and get buy-in (10-15 min): sketch components, validate with interviewer. Step 3: Design deep dive (10-25 min): go deep on 2-3 critical components. Step 4: Wrap up (3-5 min): discuss bottlenecks, improvements, edge cases. Communicate trade-offs at every step. Never jump into solutions before clarifying requirements. systemdesign42 newsletter."
+        },
+        {
+          "name": "Requirement Clarification",
+          "notes": "Functional requirements: the specific capabilities the system must have. Non-functional requirements: scale (DAU, QPS, storage), latency (p99 target), availability (SLA), consistency (can we tolerate stale reads?), geographic distribution, security compliance. Questions to ask: Who are the users? What are the core features? How many users? Read or write heavy? What are the latency expectations? Do we need global distribution? Alex Xu Ch3: 'never jump into solutions without clarifying requirements, interviewers often intentionally leave problems vague.'"
+        },
+        {
+          "name": "Capacity Estimation",
+          "notes": "Back-of-the-envelope calculation to identify which components will be bottlenecks. Calculate: QPS (DAU * requests/user/day / 86400 * peak factor), storage (records/day * record size * retention * replication), bandwidth (QPS * payload size). Reference numbers: typical web server 1000 QPS, Redis ~100k QPS, Kafka 150k writes/sec/partition. These numbers drive architecture decisions: if writes > 100k QPS, you need DB sharding. If storage > 10TB/year, you need a distributed file system. Show calculations, don't just state results. Alex Xu Ch2."
+        },
+        {
+          "name": "High-Level Design",
+          "notes": "Draw a block diagram showing major components and data flow between them. Standard components to consider: client -> DNS -> CDN (static) -> LB -> web servers -> cache (Redis) -> DB (primary/replica) -> message queue -> background workers -> object storage. Cover both read path and write path separately. Start simple (happy path, no failures), then discuss how to make it fault-tolerant and scalable. Get explicit buy-in from interviewer before diving deep. Alex Xu Ch3."
+        },
+        {
+          "name": "Deep Dive",
+          "notes": "Spend the bulk of interview time here. Pick 2-3 components that are technically interesting or where the interviewer shows interest. For each: discuss data model/schema, failure modes, scalability approach, trade-offs considered. Common deep dive targets: database schema + indexing strategy, caching layer design (what to cache, eviction policy, invalidation), message queue + consumer design, API design + rate limiting, consistency model + replication strategy. Demonstrate that you know the trade-offs, not just the patterns. Alex Xu Ch3."
+        },
+        {
+          "name": "Common Failure Modes in Interviews",
+          "notes": "7 ways to fail from systemdesign42 newsletter: (1) No requirement clarification, jumping straight to solutions. (2) Over-engineering: proposing microservices and Kafka for a simple system. (3) Ignoring non-functional requirements: designing a system that works but can't scale. (4) Not discussing trade-offs: saying 'use Cassandra' without explaining why vs alternatives. (5) Designing in silence: not narrating your thought process. (6) Getting stuck on low-level details: spending all time on DB schema, missing high-level design. (7) Ignoring failure scenarios: not discussing what happens when components fail. systemdesign42 newsletter."
+        }
+      ]
+    },
+    {
+      "name": "Mobile System Design",
+      "children": [
+        {
+          "name": "Mobile Networking",
+          "children": [
+            {
+              "name": "Thick vs Thin Client",
+              "notes": "Thick client: app does most work on device (local data storage, business logic, background sync). Works offline; syncs to server when reconnected. Gmail, Notion, Spotify are thick clients. Thin client: app is a thin shell that sends all requests to server and renders responses; useless without connectivity. Tradeoff: thick = better UX offline, harder to update logic (must ship app update), harder to secure (logic on client). Thin = easy to update server logic, but requires reliable connectivity. Modern best practice: thick client for UX-critical paths (reading, composing), thin for sensitive operations (payments, auth, pricing). systemdesign42 newsletter."
+            },
+            {
+              "name": "Push Notifications",
+              "notes": "Server-to-client delivery of messages when the app is not in the foreground. Platform infrastructure: APNs (Apple Push Notification service) for iOS, FCM (Firebase Cloud Messaging) for Android. Flow: device registers with APNs/FCM and receives a device token; server sends notification payload to APNs/FCM with the device token; platform delivers to device. Token management: tokens change on app reinstall or OS update; server must handle token refresh via callback. Payload: limited to 4KB (APNs) or 4KB (FCM). Quiet/silent push: wake app in background for data sync without showing a notification. Alex Xu Ch10 (notification system design)."
+            },
+            {
+              "name": "Request Batching & Payload Optimisation",
+              "notes": "Reduce the number of network round-trips by combining multiple API calls into one request. GraphQL: a single query can fetch data across multiple resources that would require N REST calls. Batch API endpoints: POST /batch with array of sub-requests (used by Facebook Graph API). Payload optimisation: send only changed fields (PATCH vs PUT), use binary encoding (Protobuf vs JSON, ~3-5x smaller), gzip compression for HTTP bodies (Content-Encoding: gzip), image quality/resolution optimisation per device. On mobile: each additional network round-trip is expensive (3G RTT ~200ms, LTE ~50ms). systemdesign42 newsletter."
+            },
+            {
+              "name": "Resumable Uploads",
+              "notes": "For large file uploads (videos, large images) over unreliable mobile networks. Problem: a 100MB video upload interrupted at 99% must restart from zero with naive HTTP POST. Solution: chunk the file into parts (e.g., 5MB chunks); server tracks which chunks are received; on resume, client fetches the last received offset and continues from there. Protocols: TUS (open protocol), S3 Multipart Upload (each part acknowledged; CompleteMultipartUpload when done). AWS S3 Multipart: parts from 5MB, up to 10,000 parts, parallel upload of parts. Client resumes by listing uploaded parts (ListParts) and uploading missing ones. systemdesign42 newsletter."
+            },
+            {
+              "name": "Handling Intermittent Connectivity",
+              "notes": "Mobile networks drop packets, switch between WiFi and cellular, and experience signal loss. Strategies: automatic retry with exponential backoff and jitter (prevents thundering herd on reconnect), offline queue (operations queued locally when offline, flushed on reconnect), optimistic updates (show success immediately, reconcile later), graceful degradation (show cached data with a 'you're offline' banner). iOS: NWPathMonitor for network status. Android: ConnectivityManager. Key principle: never show an error for temporary network loss \u2014 queue and retry transparently. DDIA Ch9 (unreliable networks) applied to mobile. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Mobile Caching & Offline",
+          "children": [
+            {
+              "name": "On-Device Caching",
+              "notes": "Cache API responses, images, and computed data locally on the device to reduce latency and support offline use. Types: in-memory cache (fast, lost on app kill, use for session data), disk cache (persistent, survives restarts, use for API responses and images). iOS: NSCache (in-memory), URLCache (HTTP response cache), Core Data / SQLite for structured data. Android: LruCache (in-memory), Room (SQLite ORM), OkHttp cache (HTTP). Image caching: Glide/Coil (Android), SDWebImage/Kingfisher (iOS) \u2014 disk + memory LRU cache for decoded bitmaps. Cache size limits: be conservative (50-100MB disk) since the OS can reclaim storage. systemdesign42 newsletter."
+            },
+            {
+              "name": "HTTP Caching (ETag, Cache-Control)",
+              "notes": "HTTP provides built-in caching that works without application logic. Cache-Control: max-age=N tells client how long to cache before re-fetching. ETag: server sends an opaque hash of the response (ETag: 'abc123'); client sends If-None-Match: 'abc123' on next request; server returns 304 Not Modified (no body) if unchanged, saving bandwidth. Last-Modified / If-Modified-Since: timestamp-based equivalent of ETag. Conditional GET: the combination of ETag or Last-Modified headers with conditional request headers. On mobile: conditional GETs are powerful since they save bandwidth even when the TTL expires. OkHttp (Android) automatically handles HTTP caching when a cache directory is configured. systemdesign42 newsletter."
+            },
+            {
+              "name": "Offline-First Architecture",
+              "notes": "Design the app to work fully from local data, treating server sync as an optimistic enhancement rather than a requirement. Data stored locally (SQLite, Realm, Core Data, Room); UI reads from local store exclusively. Sync engine: background process that pushes local changes to server and pulls remote changes into local store. Conflict resolution required when same data is edited on multiple devices offline. Examples: Notion, Obsidian, Figma (partial offline), Linear, Superhuman. Challenges: merge conflicts, sync ordering, handling deletes (soft deletes), large initial data download. DDIA Ch12 (derived data, systems of record vs derived data). systemdesign42 newsletter."
+            },
+            {
+              "name": "Local Database Design",
+              "notes": "Choosing and structuring an on-device database. Options: SQLite (universal, relational, ACID; accessed via Room on Android, FMDB/Core Data on iOS), Realm (object database, reactive, fast, cross-platform), Core Data (iOS/macOS ORM over SQLite), IndexedDB (web/PWA). Key considerations: query patterns (design schema around queries, not normalization \u2014 mobile DBs rarely have complex joins), indices (add index on every frequently filtered column), WAL mode (Write-Ahead Log: enables concurrent reads during write, better performance). Avoid N+1 in local queries the same way you would server-side. Store user-generated content that must survive offline. systemdesign42 newsletter."
+            },
+            {
+              "name": "Data Modeling for Mobile Constraints",
+              "notes": "Mobile devices have limited CPU, RAM, and battery. Data modeling decisions have outsized impact. Keep payloads small: return only fields the client displays (use sparse fieldsets or GraphQL). Pagination: cursor-based (infinite scroll) instead of offset. Flatten nested data: nested JSON requires deep traversal on a slow mobile CPU. Denormalize for read performance: store redundant data to avoid joins in local DB. Timestamp all records: required for delta sync and conflict resolution. Soft deletes: use deleted_at flag instead of hard delete so sync engines can propagate deletions. Use integer IDs where possible (smaller than UUIDs for storage and index efficiency). systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Mobile Data Sync",
+          "children": [
+            {
+              "name": "Delta Sync",
+              "notes": "Instead of downloading the full dataset on every sync, download only what changed since the last sync. Server maintains a way to express changes: cursor/timestamp-based (return all records updated_at > last_sync_timestamp), sequence number (server assigns monotonically increasing seq to each change, client tracks last seen seq), changelog table (explicit log of all inserts/updates/deletes). Client sends last_sync_token; server returns only the delta. Benefits: dramatically reduces bandwidth and battery consumption. Challenges: deletions must be tracked explicitly (soft delete + include deleted_at in delta), large initial sync (full download on first use). Used by: Notion, Linear, Obsidian Sync. systemdesign42 newsletter."
+            },
+            {
+              "name": "Background Sync & Retry Queues",
+              "notes": "Persist pending operations (writes, uploads) in a local queue so they survive app kills and network outages. Queue implementation: SQLite table with operation type, payload, status, retry_count, next_retry_at. Background sync: platform-specific job scheduler (Android: WorkManager with constraints=network available; iOS: BGTaskScheduler / BGProcessingTask). Retry policy: exponential backoff with jitter (retry after 1s, 2s, 4s, 8s... up to max). Idempotency: each queued operation must have a client-generated idempotency key so server-side retries are safe. Dead letter: after N failures, move to error queue for manual resolution or user notification. systemdesign42 newsletter."
+            },
+            {
+              "name": "Optimistic UI Updates",
+              "notes": "Immediately update the UI as if the server operation succeeded, then reconcile once the server responds. Example: press Like \u2014 heart fills instantly, API call happens in background. If server succeeds: state is already correct. If server fails: revert the UI change and show an error. Benefits: perceived performance improvement (0ms UI response vs 300ms network RTT). Required state management: keep previous state to roll back. Conflict with background sync: if the server returns a different value (e.g., like count is higher than expected due to concurrent likes), merge the server response. Used by: Twitter likes, Instagram double-tap, Google Docs collaborative editing. systemdesign42 newsletter."
+            },
+            {
+              "name": "Eventual Consistency in Mobile Systems",
+              "notes": "Mobile clients are inherently eventually consistent: a device offline for hours has stale data that must reconcile with the server on reconnect. Unlike server-side eventual consistency (seconds to minutes), mobile eventual consistency windows can be days. Key implications: never assume the server state matches local state; design UI to handle conflicts gracefully (show 'syncing...' indicators, handle server-returned corrections); use server-authoritative IDs (server assigns final ID after client creates with a temp local ID); version all data (updated_at or version counter) to detect staleness. Relates to DDIA Ch6 (eventual consistency) but the offline window and UI implications are mobile-specific. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Mobile Security",
+          "children": [
+            {
+              "name": "Secure Token Storage",
+              "notes": "Auth tokens (JWT access tokens, OAuth refresh tokens) must be stored securely to prevent theft by other apps or malware. iOS: Keychain (hardware-backed secure enclave storage, survives app reinstall if configured, access controlled by biometrics). Android: Keystore (hardware-backed, keys never leave secure hardware; EncryptedSharedPreferences for token storage). Never store tokens in: plain SharedPreferences/NSUserDefaults (readable by other processes on rooted devices), local SQLite without encryption (readable on rooted devices), logs. Token rotation: use short-lived access tokens (15 min) + long-lived refresh tokens; rotate refresh tokens on use (refresh token rotation). systemdesign42 newsletter."
+            },
+            {
+              "name": "Certificate Pinning",
+              "notes": "Prevents man-in-the-middle attacks by hardcoding the expected server TLS certificate or public key in the app. On TLS handshake: app compares server's certificate against the pinned value; if they don't match, connection is rejected \u2014 even if the certificate is signed by a trusted CA. Variants: certificate pinning (pin the full cert, brittle: must update app on cert renewal), public key pinning (pin the public key, survives cert renewal if same key is used). iOS: NSURLSession with custom URLSessionDelegate. Android: OkHttp CertificatePinner. Risk: if pinned cert expires and app isn't updated, app breaks. Backup pins: always include a backup pin for certificate rotation. systemdesign42 newsletter."
+            },
+            {
+              "name": "Biometric Authentication",
+              "notes": "Use fingerprint (Touch ID) or face recognition (Face ID, Android BiometricPrompt) to authenticate the user or unlock sensitive app sections without requiring a password re-entry. Implementation: OS handles biometric verification; on success, the OS releases a Keychain/Keystore key that decrypts the local credentials or signs an auth assertion. App never sees the raw biometric data (handled entirely by secure enclave). Fallback: always offer PIN/password fallback for when biometrics fail or are unavailable. Use cases: unlock app after background, authorize payments, decrypt locally stored data. Not a replacement for server-side auth: biometrics only prove physical presence at the device. systemdesign42 newsletter."
+            },
+            {
+              "name": "Code Obfuscation & Tamper Detection",
+              "notes": "Code obfuscation: rename classes, methods, and variables to meaningless names to make reverse engineering harder. iOS: Swift code is partially obfuscated by default but Objective-C is not; tools like iXGuard/Obfuscator-LLVM. Android: ProGuard/R8 (bundled with Android Gradle plugin) renames and removes dead code; DexGuard for stronger obfuscation. Tamper detection: verify app signature at runtime (Android PackageManager.getPackageInfo with GET_SIGNATURES); detect if app is running in a debugger or emulator (Android Debug.isDebuggerConnected, BuildConfig.DEBUG). Root/jailbreak detection: check for su binary, Cydia, known root apps. Obfuscation slows reverse engineering but doesn't stop a determined attacker. systemdesign42 newsletter."
+            },
+            {
+              "name": "Secure Deep Linking",
+              "notes": "Deep links open specific app screens from URLs (e.g., myapp://product/123 or https://myapp.com/product/123). Security risks: another app can register the same URL scheme and intercept links (URL scheme hijacking). Universal Links (iOS) / App Links (Android): HTTPS-based deep links validated by a server-hosted file (apple-app-site-association / assetlinks.json) that proves the app owns the domain. This prevents other apps from hijacking the link. Never trust deep link parameters without validation: always sanitize and authorize; a malicious link could pass crafted parameters to bypass in-app auth checks. Deferred deep links: route new users through install then to the intended screen. systemdesign42 newsletter."
+            },
+            {
+              "name": "User Data Privacy",
+              "notes": "Regulations: GDPR (EU \u2014 right to erasure, data portability, consent required), CCPA (California \u2014 opt-out of data sale), COPPA (US \u2014 no data collection from under-13s). Principles: data minimization (collect only what you use), purpose limitation (don't use data beyond stated purpose), retention limits (delete data after N days). Technical measures: anonymization (remove PII before analytics), pseudonymization (replace PII with tokens), differential privacy (add mathematical noise to aggregate queries \u2014 used by Apple for usage statistics). App Store requirements: Privacy Nutrition Labels (iOS) and Data Safety section (Android) require declaring what data is collected. DDIA Ch14 (ethics and privacy) is the foundational reference. systemdesign42 newsletter."
+            }
+          ]
+        },
+        {
+          "name": "Mobile Performance & Optimisation",
+          "children": [
+            {
+              "name": "App Lifecycle & State Management",
+              "notes": "iOS app states: Not Running, Inactive, Active, Background (limited time), Suspended (frozen in memory, can be killed without warning). Android: Activity/Fragment lifecycle (onCreate, onStart, onResume, onPause, onStop, onDestroy) + process lifecycle (foreground service, background restrictions in Android 8+). Critical: save state before app goes to background (iOS: applicationWillResignActive; Android: onSaveInstanceState) so it can be restored after kill. Memory pressure: iOS sends memory warnings (applicationDidReceiveMemoryWarning); Android trims memory callbacks (onTrimMemory). Background work limits: iOS background time is ~30 seconds after going to background. systemdesign42 newsletter."
+            },
+            {
+              "name": "Background Processing Limits",
+              "notes": "OS platforms aggressively restrict background processing to save battery. iOS: apps get ~30s background execution after going to background (beginBackgroundTask); BGAppRefreshTask for periodic fetch (min ~15min interval, OS decides actual timing); BGProcessingTask for long tasks (only when plugged in). Android: Doze mode (introduced Android 6) defers network and CPU in standby; App Standby Buckets reduce background job frequency for rarely-used apps; WorkManager: the recommended API that handles all background scheduling constraints (network, charging, idle). Key rule: never assume background tasks run promptly; design for eventual execution. systemdesign42 newsletter."
+            },
+            {
+              "name": "Battery Optimisation",
+              "notes": "Battery drain sources: GPS/location (highest drain), Bluetooth/WiFi scanning, CPU-intensive work, screen wake (WakeLocks), frequent network requests. Strategies: batch network requests (reduce radio wake-ups; mobile radio takes ~2s to transition from idle to active state), use push over polling (FCM/APNs wakes app only when data arrives vs polling every N seconds), exponential backoff for retries, use passive location (network/WiFi instead of GPS), avoid WakeLocks, release resources (camera, microphone, sensors) in onPause/onStop. iOS: Instruments Energy Log; Android: Android Battery Historian for diagnosing drain. systemdesign42 newsletter."
+            },
+            {
+              "name": "Startup Time Optimisation",
+              "notes": "App startup types: cold start (process not in memory, slowest), warm start (process in memory but activity destroyed), hot start (activity in memory, fastest). Cold start time target: < 500ms (Google recommends < 2s, Apple recommends < 400ms for initial display). Optimizations: defer non-critical initializations to post-launch (lazy init, background threads), avoid synchronous disk I/O on main thread at startup, use App Startup Library (Android) to sequence init in the correct order, reduce number of libraries with heavy startup costs, profile with Android Profiler or Xcode Instruments Time Profiler, use baseline profiles (Android) to pre-JIT critical code paths. systemdesign42 newsletter."
+            },
+            {
+              "name": "Rendering Performance",
+              "notes": "Smooth 60 FPS (16ms per frame) or 120 FPS (8ms per frame) on ProMotion displays. Main thread rule: all UI updates must happen on the main thread; blocking the main thread causes dropped frames (jank). Common causes of jank: synchronous disk/network I/O on main thread, expensive layout passes (deeply nested view hierarchies), overdraw (multiple layers painting same pixel). Optimizations: RecyclerView/UICollectionView for lists (only render visible cells, recycle off-screen), flatten view hierarchies (ConstraintLayout on Android, avoid deep SwiftUI view trees), prefetch and cache decoded images (avoid decoding on main thread), use hardware-accelerated layers. Profile with Xcode Instruments Core Animation or Android GPU Rendering. systemdesign42 newsletter."
+            },
+            {
+              "name": "Memory Management & Leak Prevention",
+              "notes": "Mobile devices have limited RAM (2-8GB on mid-range phones). OOM (Out Of Memory) kills are silent: Android kills background processes; iOS terminates apps that use too much memory. Common leaks: retained strong references to Activity/ViewController in callbacks (use weak self in Swift/Kotlin closures), static references to Context (Android), large bitmap allocations not recycled. Detection tools: Android Memory Profiler (heap dumps, allocation tracking), Xcode Memory Graph Debugger, LeakCanary (Android library that detects leaks at runtime in debug builds). Image memory: a 4K image is 48MB decoded in memory; always downsample to display size before caching. ARC (iOS) and GC (Android) handle allocation but not reference cycles. systemdesign42 newsletter."
+            },
+            {
+              "name": "App Size Optimisation",
+              "notes": "Smaller apps download faster, get more installs (every 6MB reduction = ~1% install increase per Google study). Techniques: Android App Bundle (AAB) \u2014 Google Play strips unused density/ABI/language resources per device, reducing delivery size by ~20-30%. On-demand feature modules: download large features (AR, advanced editor) only when first used. Image compression: WebP format (25-34% smaller than JPEG at same quality), vector drawables for icons instead of multiple PNG densities. Code shrinking: R8/ProGuard removes unused code and resources. Avoid bundling large libraries when only a small portion is used (check method count on Android). iOS App Thinning: App Slicing + On-Demand Resources + Bitcode. systemdesign42 newsletter."
+            }
+          ]
+        }
       ]
     }
   ]
