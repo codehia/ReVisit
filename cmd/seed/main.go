@@ -1,17 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"slices"
 	"sync"
-	"time"
 
+	"github.com/codehia/goflash/internal/ai"
 	"github.com/codehia/goflash/internal/types"
 	"go.uber.org/zap"
 )
@@ -20,12 +16,9 @@ var (
 	logger       = zap.Must(zap.NewDevelopment())
 	sugar        = logger.Sugar()
 	systemPrompt string
-	httpClient   = &http.Client{Timeout: 72 * time.Second}
 )
 
 const (
-	Model          = "deepseek-v4-flash"
-	Stream         = false
 	fakeUserPrompt = `
 		Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea.
 		Use the tag and tag_path exactly as given - do not modify them or create new tags.
@@ -60,85 +53,13 @@ const (
 	`
 )
 
-type config struct {
-	APIKey  string
-	BaseURL string
-}
-
 type LeafNode struct {
 	types.Node
 	Path string
 }
 
-type requestPayload struct {
-	Model          string            `json:"model"`
-	Temperature    float64           `json:"temperature"`
-	MaxTokens      int               `json:"max_tokens"`
-	ResponseFormat map[string]string `json:"response_format"`
-	Messages       []message         `json:"messages"`
-	Thinking       map[string]string `json:"thinking"`
-	Stream         bool              `json:"stream"`
-}
-
-type message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
 type entriesWrapper struct {
 	Entries []types.Response `json:"entries"`
-}
-
-type Choice struct {
-	Index   int     `json:"index"`
-	Message message `json:"message"`
-}
-
-type APIResponse struct {
-	Choices []Choice `json:"choices"`
-}
-
-func newMessage(content string, role string) (message, error) {
-	if content == "" {
-		return message{}, errors.New("empty strings are not allowed")
-	}
-	if role == "" {
-		role = "user"
-	}
-	return message{Role: role, Content: content}, nil
-}
-
-func newRequestPayload(messages []message) (requestPayload, error) {
-	if len(messages) == 0 {
-		return requestPayload{}, errors.New("empty list of messages is not allowed")
-	}
-
-	thinking := map[string]string{"type": "disabled"}
-
-	responseFormat := map[string]string{"type": "json_object"}
-	return requestPayload{
-		Model:          Model,
-		Temperature:    0.0,
-		MaxTokens:      32000,
-		ResponseFormat: responseFormat,
-		Messages:       messages,
-		Thinking:       thinking,
-		Stream:         Stream,
-	}, nil
-}
-
-func getRootNode(path string) (types.Node, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return types.Node{}, fmt.Errorf("getRootNode: read %q: %w", path, err)
-	}
-
-	var root types.Node
-	if err := json.Unmarshal(data, &root); err != nil {
-		return types.Node{}, fmt.Errorf("getRootNode: parse json: %w", err)
-	}
-
-	return root, nil
 }
 
 func getLeafNodes(node types.Node, path string) []LeafNode {
@@ -168,96 +89,64 @@ func findChildrenNodes(node types.Node, childrenNames []string) []types.Node {
 	return childrenNodes
 }
 
-func createUserMessage(leaf LeafNode) (message, error) {
+func createUserMessage(leaf LeafNode) (types.APIMessage, error) {
 	content := fmt.Sprintf(`
-		Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea. 
+		Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea.
 		Use the tag and tag_path exactly as given - do not modify them or create new tags.
-		
+
 		Concept: %s
 		Tag path: %s
 		Anchor: %s`, leaf.Name, leaf.Path, leaf.Notes)
-	return newMessage(content, "user")
+	return types.NewMessage(content, "user")
 }
 
-func createFakeUserMessage() (message, error) {
-	return newMessage(fakeUserPrompt, "user")
+func createFakeUserMessage() (types.APIMessage, error) {
+	return types.NewMessage(fakeUserPrompt, "user")
 }
 
-func createAssistantMessage() (message, error) {
-	return newMessage(assistantPrompt, "assistant")
+func createAssistantMessage() (types.APIMessage, error) {
+	return types.NewMessage(assistantPrompt, "assistant")
 }
 
-func createSystemMessage() (message, error) {
-	return newMessage(systemPrompt, "system")
+func createSystemMessage() (types.APIMessage, error) {
+	return types.NewMessage(systemPrompt, "system")
 }
 
-func createPayload(node LeafNode) (requestPayload, error) {
+func createPayload(node LeafNode) (types.RequestPayload, error) {
 	systemMessage, err := createSystemMessage()
 	if err != nil {
-		return requestPayload{}, err
+		return types.RequestPayload{}, err
 	}
 	userMessage, err := createUserMessage(node)
 	if err != nil {
-		return requestPayload{}, err
+		return types.RequestPayload{}, err
 	}
 	fakeUserMessage, err := createFakeUserMessage()
 	if err != nil {
-		return requestPayload{}, err
+		return types.RequestPayload{}, err
 	}
 	assistantMessage, err := createAssistantMessage()
 	if err != nil {
-		return requestPayload{}, err
+		return types.RequestPayload{}, err
 	}
 
-	messages := []message{systemMessage, fakeUserMessage, assistantMessage, userMessage}
-	payload, err := newRequestPayload(messages)
-	if err != nil {
-		return requestPayload{}, err
-	}
-
-	return payload, nil
+	messages := []types.APIMessage{systemMessage, fakeUserMessage, assistantMessage, userMessage}
+	return types.NewRequestPayload(messages)
 }
 
-func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.Response, retry chan<- requestPayload, wg *sync.WaitGroup) {
-	payload, err := json.Marshal(payloadData)
-	if err != nil {
-		sugar.Errorw("marshalling payload failed", "error", err)
-		wg.Done()
-		return
-	}
-
+func makeRequest(payloadData types.RequestPayload, cfg types.Config, results chan<- []types.Response, retry chan<- types.RequestPayload, wg *sync.WaitGroup) {
 	sugar.Infow("sending request", "model", payloadData.Model)
-	req, err := http.NewRequest("POST", cfg.BaseURL, bytes.NewReader(payload))
-	if err != nil {
-		sugar.Errorw("failed to create request", "error", err)
-		wg.Add(1)
-		retry <- payloadData
-		wg.Done()
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
-	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(req)
+	content, err := ai.MakeRequest(payloadData, cfg)
 	if err != nil {
-		sugar.Warnw("http request failed, retrying", "error", err)
-		wg.Add(1)
-		retry <- payloadData
-		wg.Done()
-		return
-	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		sugar.Warnw("reading response body failed, retrying", "error", err)
+		sugar.Warnw("request failed, retrying", "error", err)
 		wg.Add(1)
 		retry <- payloadData
 		wg.Done()
 		return
 	}
 
-	responses, err := validateResponse(body)
+	responses, err := validateResponse(content)
 	if err != nil {
 		sugar.Warnw("validation failed, retrying", "error", err)
 		wg.Add(1)
@@ -271,31 +160,17 @@ func makeRequest(payloadData requestPayload, cfg config, results chan<- []types.
 	wg.Done()
 }
 
-func validateResponse(response []byte) ([]types.Response, error) {
-	apiResponse := APIResponse{}
-	if err := json.Unmarshal(response, &apiResponse); err != nil {
+func validateResponse(content []byte) ([]types.Response, error) {
+	var wrapper entriesWrapper
+	if err := json.Unmarshal(content, &wrapper); err != nil {
 		return nil, err
 	}
-	if len(apiResponse.Choices) == 0 {
-		return nil, fmt.Errorf("API returned no choices, body: %s", string(response))
-	}
-
-	var responses []types.Response
-
-	for _, choice := range apiResponse.Choices {
-		var wrapper entriesWrapper
-		if err := json.Unmarshal([]byte(choice.Message.Content), &wrapper); err != nil {
+	for _, entry := range wrapper.Entries {
+		if err := entry.Validate(); err != nil {
 			return nil, err
 		}
-		for _, entry := range wrapper.Entries {
-			if err := entry.Validate(); err != nil {
-				return nil, err
-			}
-		}
-		responses = append(responses, wrapper.Entries...)
-
 	}
-	return responses, nil
+	return wrapper.Entries, nil
 }
 
 func writeToResultJson(path string, results []types.Response) {
@@ -344,16 +219,9 @@ func writeToResultJson(path string, results []types.Response) {
 
 func main() {
 	defer logger.Sync() //nolint:errcheck
-	cfg := config{
-		APIKey:  os.Getenv("DEEPSEEK_API_KEY"),
-		BaseURL: os.Getenv("DEEPSEEK_BASE_URL"),
-	}
-	if cfg.APIKey == "" {
-		sugar.Errorw("DEEPSEEK_API_KEY is not set")
-		os.Exit(1)
-	}
-	if cfg.BaseURL == "" {
-		sugar.Errorw("DEEPSEEK_BASE_URL is not set")
+	cfg, err := types.NewConfig()
+	if err != nil {
+		sugar.Errorw("config creation failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -370,7 +238,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	root, err := getRootNode("system-design-hierarchy.json")
+	root, err := types.LoadNode("system-design-hierarchy.json")
 	if err != nil {
 		sugar.Errorw("failed to read root node", "error", err)
 		os.Exit(1)
@@ -388,7 +256,7 @@ func main() {
 	sugar.Infow("found leaf nodes", "count", len(leafNodes))
 
 	results := make(chan []types.Response)
-	retry := make(chan requestPayload)
+	retry := make(chan types.RequestPayload)
 
 	var wg sync.WaitGroup
 	for _, node := range leafNodes {
@@ -408,6 +276,7 @@ func main() {
 		close(results)
 		close(retry)
 	}()
+
 	go func() {
 		for r := range retry {
 			sugar.Infow("retrying request", "model", r.Model)
