@@ -7,24 +7,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/codehia/goflash/internal/db/model"
 	"github.com/codehia/goflash/internal/db/table"
 	"github.com/codehia/goflash/internal/store"
 	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/goflash/internal/utils"
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 )
-
-func stringPtrEqual(a, b *string) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
 
 func readJsonFile(path string) ([]types.Response, error) {
 	data, err := os.ReadFile(path)
@@ -37,19 +29,6 @@ func readJsonFile(path string) ([]types.Response, error) {
 		return nil, fmt.Errorf("readJsonFile: unmarshal: %w", err)
 	}
 	return responses, nil
-}
-
-func readHierarchyFile() ([]types.Node, error) {
-	data, err := os.ReadFile("system-design-hierarchy.json")
-	if err != nil {
-		return nil, err
-	}
-
-	var root types.Node
-	if err := json.Unmarshal(data, &root); err != nil {
-		return nil, err
-	}
-	return root.Children, nil
 }
 
 func getTagRecord(tagName string, db *sql.DB) (model.Tags, error) {
@@ -81,7 +60,7 @@ func saveTagsToDB(nodes []types.Node, db *sql.DB, parentID *string) {
 			log.Fatalf("saveTagsToDB: query tag %q: %v", node.Name, err)
 		} else {
 			tagID = *foundTag.ID
-			if !stringPtrEqual(foundTag.ParentID, parentID) {
+			if !utils.StringPtrEqual(foundTag.ParentID, parentID) {
 				_, err := table.Tags.UPDATE(table.Tags.ParentID).SET(parentID).WHERE(table.Tags.ID.EQ(sqlite.String(*foundTag.ID))).Exec(db)
 				if err != nil {
 					log.Fatalf("saveTagsToDB: update parent for tag %q: %v", node.Name, err)
@@ -139,17 +118,19 @@ func saveCardsToDB(outputFilePath string, db *sql.DB) {
 
 			var cardID string
 			if errors.Is(err, qrm.ErrNoRows) {
+				now := time.Now().UTC()
 				cardRecord := model.Cards{
 					Question:  card.Question,
 					Answer:    card.Answer,
 					Examples:  card.Examples,
 					Tradeoffs: card.TradeOffs,
 					CardType:  card.CardType,
+					DueDate:   &now,
 				}
 				var insertedCard model.Cards
 				if err := table.Cards.INSERT(table.Cards.Question, table.Cards.Answer, table.Cards.Examples,
 					table.Cards.Tradeoffs,
-					table.Cards.CardType).MODEL(cardRecord).RETURNING(table.Cards.AllColumns).
+					table.Cards.CardType, table.Cards.DueDate).MODEL(cardRecord).RETURNING(table.Cards.AllColumns).
 					Query(tx, &insertedCard); err != nil {
 					tx.Rollback() //nolint:errcheck
 					log.Fatalf("saveCardsToDB: insert card %q: %v", card.Question, err)
@@ -196,18 +177,16 @@ func saveCardsToDB(outputFilePath string, db *sql.DB) {
 }
 
 func main() {
-	s, err := store.New("goflash.db")
+	db, err := store.Open()
 	if err != nil {
 		log.Fatalf("failed to open store: %v", err)
 	}
-	db := s.DB()
-
 	defer db.Close() //nolint:errcheck
 
-	nodes, err := readHierarchyFile()
+	root, err := types.LoadNode("system-design-hierarchy.json")
 	if err != nil {
 		log.Fatalf("failed to read hierarchy: %v", err)
 	}
-	saveTagsToDB(nodes, db, nil)
+	saveTagsToDB(root.Children, db, nil)
 	saveCardsToDB("output.json", db)
 }
