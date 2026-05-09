@@ -1,7 +1,9 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -14,6 +16,18 @@ type Node struct {
 	Name     string `json:"name"`
 	Notes    string `json:"notes,omitempty"`
 	Children []Node `json:"children,omitempty"`
+}
+
+func LoadNode(path string) (Node, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Node{}, fmt.Errorf("LoadNode: read %q: %w", path, err)
+	}
+	var root Node
+	if err := json.Unmarshal(data, &root); err != nil {
+		return Node{}, fmt.Errorf("LoadNode: parse json: %w", err)
+	}
+	return root, nil
 }
 
 type Card struct {
@@ -79,13 +93,13 @@ func NewMessage(content string, role string) (APIMessage, error) {
 }
 
 type EvalResult struct {
-	Score    *int   `json:"score"`
+	Score    int    `json:"score"`
 	Feedback string `json:"feedback"`
 }
 
 func (e EvalResult) Validate() error {
-	if e.Score == nil {
-		return errors.New("missing score")
+	if (e.Score > 5) || (e.Score < 0) {
+		return errors.New("score is not in the 0-5 range")
 	} else if e.Feedback == "" {
 		return errors.New("missing feedback")
 	}
