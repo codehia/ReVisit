@@ -104,6 +104,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case EvalResultMsg:
 		m.evalResult = msg.result
+		m.sessionScores = append(m.sessionScores, msg.result.Score)
 		m.currentScreen = ScreenEvalResult
 		return m, nil
 	}
@@ -117,6 +118,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updateCardAttempt(msg, m)
 	case ScreenEvalResult:
 		return updateEvalResult(msg, m)
+	case ScreenDone:
+		return updateDone(msg, m)
 	default:
 		return m, nil
 	}
@@ -150,6 +153,8 @@ func screenHeader(m RootModel) string {
 		return cardAttemptHeader(m)
 	case ScreenEvalResult:
 		return evalResultHeader(m)
+	case ScreenDone:
+		return doneHeader(m)
 	default:
 		return ""
 	}
@@ -166,6 +171,8 @@ func screenBody(m RootModel) string {
 		return cardAttemptBody(m)
 	case ScreenEvalResult:
 		return evalResultBody(m)
+	case ScreenDone:
+		return doneBody(m)
 	default:
 		return ""
 	}
@@ -182,6 +189,8 @@ func screenFooter(m RootModel) string {
 		return cardAttemptFooter(m)
 	case ScreenEvalResult:
 		return evalResultFooter(m)
+	case ScreenDone:
+		return doneFooter(m)
 	default:
 		return ""
 	}
