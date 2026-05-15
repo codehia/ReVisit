@@ -17,6 +17,16 @@ type Topic struct {
 	Name string
 }
 
+// TopicSummary is a richer view of a top-level topic for the TUI topic list.
+// It includes the card count across the full subtree and the names of direct
+// subtopics. Built by store.GetTopicSummaries from multiple queries.
+type TopicSummary struct {
+	ID        *string
+	Name      string
+	CardCount int
+	Subtopics []string // direct child tag names
+}
+
 type Node struct {
 	Name     string `json:"name"`
 	Notes    string `json:"notes,omitempty"`
