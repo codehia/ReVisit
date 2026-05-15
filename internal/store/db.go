@@ -25,6 +25,7 @@ func New(path string) (*Store, error) {
 	}
 
 	goose.SetDialect("sqlite3") //nolint:errcheck
+	goose.SetLogger(goose.NopLogger())
 	if err := goose.Up(db, "migrations"); err != nil {
 		return nil, err
 	}
@@ -37,7 +38,6 @@ func (s *Store) DB() *sql.DB { return s.db }
 func Open() (*sql.DB, error) {
 	databaseName := os.Getenv("DATABASE_NAME")
 	if databaseName == "" {
-		sugar.Warnw("DATABASE_NAME is not set. Setting it to goflash.db")
 		databaseName = "goflash.db"
 	}
 	s, err := New(databaseName)
