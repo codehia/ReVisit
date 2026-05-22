@@ -233,10 +233,6 @@ func main() {
 	systemPrompt = string(systemPromptFileData)
 
 	children := os.Args[1:]
-	if len(children) == 0 {
-		sugar.Errorw("no children specified")
-		os.Exit(1)
-	}
 
 	root, err := types.LoadNode("system-design-hierarchy.json")
 	if err != nil {
@@ -244,7 +240,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	childrenNodes := findChildrenNodes(root, children)
+	var childrenNodes []types.Node
+	if len(children) == 0 {
+		sugar.Infow("no topics specified, seeding all top-level topics", "count", len(root.Children))
+		childrenNodes = root.Children
+	} else {
+		childrenNodes = findChildrenNodes(root, children)
+	}
 	var leafNodes []LeafNode
 	for _, node := range childrenNodes {
 		leafNodes = append(leafNodes, getLeafNodes(node, "")...)
