@@ -4,8 +4,8 @@ package tui
 card_attempt.go — Screen 3: type answer to current card.
 
 Header: progress bar + topic/subtopic pills (same as question screen)
-Body:   question (muted) + textarea
-Footer: action bar (esc / ctrl+enter)
+Body:   textarea
+Footer: action bar (ctrl+s / esc)
 */
 
 import (
@@ -40,20 +40,20 @@ func updateCardAttempt(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func cardAttemptHeader(m RootModel) string {
-	return cardQuestionHeader(m).String()
+func cardAttemptHeader(m RootModel) lipgloss.Style {
+	return cardQuestionHeader(m)
 }
 
-func cardAttemptBody(m RootModel) string {
-	if m.cardIndex >= len(m.cards) {
-		return ""
+func cardAttemptBody(m RootModel) lipgloss.Style {
+	var content string
+	if m.cardIndex < len(m.cards) {
+		box := styledBox(CardParams{BorderColor: colorFlamingo, Padding: []int{0, 2}}).Render(m.textarea.View())
+		centered := lipgloss.Place(cardInnerW, lipgloss.Height(box), lipgloss.Center, lipgloss.Top, box)
+		content = "\n" + hintStyle.Render("your answer") + "\n\n" + centered
 	}
-	box := borderedBox(colorFlamingo).Render(m.textarea.View())
-	centered := lipgloss.Place(cardInnerW, lipgloss.Height(box), lipgloss.Center, lipgloss.Top, box)
-	return "\n " + hintStyle.Render("your answer") +
-		"\n\n" + centered
+	return styledBox(CardParams{BgColor: colorBase}).SetString(content)
 }
 
-func cardAttemptFooter(_ RootModel) string {
-	return "\n " + actionBar("ctrl+s", "submit", "esc", "back")
+func cardAttemptFooter(_ RootModel) lipgloss.Style {
+	return styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(actionBar("ctrl+s", "submit", "esc", "back"))
 }

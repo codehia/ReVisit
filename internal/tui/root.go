@@ -37,11 +37,10 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TopicSelectedMsg:
 		m.selectedTopicID = &msg.topicID
 		m.topicName = msg.topicName
-		m.cursor = 0
 		m.cardIndex = 0
 		m.sessionScores = nil
 		m.currentScreen = ScreenCardQuestion
-		return m, InitCardList(m)
+		return m, initCards(m)
 
 	case cardsLoadedMsg:
 		m.cards = msg.cards
@@ -96,14 +95,14 @@ func screenHeader(m RootModel) lipgloss.Style {
 	switch m.currentScreen {
 	case ScreenTopicList:
 		return topicListHeader(m)
-	// case ScreenCardQuestion:
-	// 	return cardQuestionHeader(m)
-	// case ScreenCardAttempt:
-	// 	return cardAttemptHeader(m)
-	// case ScreenEvalResult:
-	// 	return evalResultHeader(m)
-	// case ScreenDone:
-	// 	return doneHeader(m)
+	case ScreenCardQuestion:
+		return cardQuestionHeader(m)
+	case ScreenCardAttempt:
+		return cardAttemptHeader(m)
+	case ScreenEvalResult:
+		return evalResultHeader(m)
+	case ScreenDone:
+		return doneHeader(m)
 	default:
 		return lipgloss.NewStyle()
 	}
@@ -113,14 +112,14 @@ func screenBody(m RootModel) lipgloss.Style {
 	switch m.currentScreen {
 	case ScreenTopicList:
 		return topicListBody(m)
-	// case ScreenCardQuestion:
-	// 	return cardQuestionBody(m)
-	// case ScreenCardAttempt:
-	// 	return cardAttemptBody(m)
-	// case ScreenEvalResult:
-	// 	return evalResultBody(m)
-	// case ScreenDone:
-	// 	return doneBody(m)
+	case ScreenCardQuestion:
+		return cardQuestionBody(m)
+	case ScreenCardAttempt:
+		return cardAttemptBody(m)
+	case ScreenEvalResult:
+		return evalResultBody(m)
+	case ScreenDone:
+		return doneBody(m)
 	default:
 		return lipgloss.NewStyle()
 	}
@@ -130,14 +129,14 @@ func screenFooter(m RootModel) lipgloss.Style {
 	switch m.currentScreen {
 	case ScreenTopicList:
 		return topicListFooter(m)
-	// case ScreenCardQuestion:
-	// 	return cardQuestionFooter(m)
-	// case ScreenCardAttempt:
-	// 	return cardAttemptFooter(m)
-	// case ScreenEvalResult:
-	// 	return evalResultFooter(m)
-	// case ScreenDone:
-	// 	return doneFooter(m)
+	case ScreenCardQuestion:
+		return cardQuestionFooter(m)
+	case ScreenCardAttempt:
+		return cardAttemptFooter(m)
+	case ScreenEvalResult:
+		return evalResultFooter(m)
+	case ScreenDone:
+		return doneFooter(m)
 	default:
 		return lipgloss.NewStyle()
 	}
@@ -149,10 +148,10 @@ func buildTextarea() ta.Model {
 	t.DynamicHeight = true
 	t.MinHeight = 4
 	t.MaxHeight = 15
-	t.SetWidth(contentWidth - 6)
-	t.SetVirtualCursor(false)
 	t.ShowLineNumbers = false
 	t.Prompt = ""
+	t.SetWidth(contentWidth - 6)
+	t.SetVirtualCursor(false)
 
 	t.Focus()
 	return t

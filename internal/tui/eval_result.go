@@ -38,50 +38,51 @@ func updateEvalResult(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func evalResultHeader(m RootModel) string {
+func evalResultHeader(m RootModel) lipgloss.Style {
 	return cardQuestionHeader(m)
 }
 
-func evalResultBody(m RootModel) string {
+func evalResultBody(m RootModel) lipgloss.Style {
 	r := m.evalResult
 	scoreColor := scoreAccentColor(r.Score)
-	innerW := contentWidth - 6 // borderedBox: border(2) + padding(4)
+	innerW := contentWidth - roundedBorderH // text area inside inner renderCard border
 
-	// Score line: "AI FEEDBACK" label + score right-aligned
-	scoreStr := lipgloss.NewStyle().Foreground(scoreColor).Bold(true).Render(fmt.Sprintf("%d / 5", r.Score))
-	label := hintStyle.Render("AI FEEDBACK")
-	gap := innerW - lipgloss.Width(label) - lipgloss.Width(scoreStr)
-	if gap < 1 {
-		gap = 1
-	}
-	scoreLine := label + strings.Repeat(" ", gap) + scoreStr
+	scoreAccent := lipgloss.NewStyle().Foreground(scoreColor).Bold(true)
 
-	// Score bar
-	filled := (r.Score * innerW) / 5
-	bar := lipgloss.NewStyle().Foreground(scoreColor).Render(strings.Repeat("━", filled)) +
-		faintStyle.Render(strings.Repeat("━", innerW-filled))
+	// AI FEEDBACK header: label left, score right; stars right-aligned below
+	contentW := innerW - 2 // -2 for Padding[]int{0,1}: 1 char each side
+	scoreNum := scoreAccent.Render(fmt.Sprintf("%d / 5", r.Score))
+	label := lipgloss.NewStyle().Foreground(colorFlamingo).Bold(true).Render("AI FEEDBACK")
+	gap := contentW - lipgloss.Width(label) - lipgloss.Width(scoreNum)
+	scoreLine := label + strings.Repeat(" ", max(gap, 1)) + scoreNum
+	stars := scoreAccent.Render(strings.Repeat("★", r.Score)) +
+		faintStyle.Render(strings.Repeat("☆", 5-r.Score))
+	starsLine := strings.Repeat(" ", max(contentW-lipgloss.Width(stars), 0)) + stars
+	feedbackHeader := styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(scoreLine + "\n" + starsLine)
 
-	// Feedback text
-	feedback := lipgloss.Wrap(r.Feedback, innerW, "")
-	feedbackContent := lipgloss.NewStyle().Width(innerW).Render(
-		scoreLine + "\n" + bar + "\n\n" + mutedStyle.Render(feedback),
-	)
-	feedbackBox := borderedBox(colorBorder).Render(feedbackContent)
-	feedbackCentered := lipgloss.Place(cardInnerW, lipgloss.Height(feedbackBox), lipgloss.Center, lipgloss.Top, feedbackBox)
+	// AI FEEDBACK body: feedback text
+	feedback := lipgloss.Wrap(r.Feedback, contentW, "")
+	feedbackBody := styledBox(CardParams{BgColor: colorBase, Padding: []int{0, 1}}).SetString(mutedStyle.Render(feedback))
 
-	// Reference answer (label + content inside the box)
-	answer := lipgloss.Wrap(m.cards[m.cardIndex].Answer, innerW, "")
-	refContent := lipgloss.NewStyle().Width(innerW).Render(
-		hintStyle.Render("REFERENCE ANSWER") + "\n\n" + mutedStyle.Render(answer),
-	)
-	refBox := borderedBox(colorBorder).Render(refContent)
-	refCentered := lipgloss.Place(cardInnerW, lipgloss.Height(refBox), lipgloss.Center, lipgloss.Top, refBox)
+	feedbackCard := renderCard(contentWidth, colorFlamingo, feedbackHeader, feedbackBody, lipgloss.NewStyle())
+	feedbackCentered := lipgloss.Place(cardInnerW, lipgloss.Height(feedbackCard), lipgloss.Center, lipgloss.Top, feedbackCard)
 
-	return "\n" + feedbackCentered + "\n\n" + refCentered
+	// REFERENCE ANSWER header: label only
+	refLabel := lipgloss.NewStyle().Foreground(colorSapphire).Bold(true).Render("REFERENCE ANSWER")
+	refHeader := styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(refLabel)
+
+	// REFERENCE ANSWER body: answer text
+	answer := lipgloss.Wrap(m.cards[m.cardIndex].Answer, contentW, "")
+	refBody := styledBox(CardParams{BgColor: colorBase, Padding: []int{0, 1}}).SetString(mutedStyle.Render(answer))
+
+	refCard := renderCard(contentWidth, colorSapphire, refHeader, refBody, lipgloss.NewStyle())
+	refCentered := lipgloss.Place(cardInnerW, lipgloss.Height(refCard), lipgloss.Center, lipgloss.Top, refCard)
+
+	return styledBox(CardParams{BgColor: colorBase}).SetString("\n" + feedbackCentered + "\n\n" + refCentered)
 }
 
-func evalResultFooter(_ RootModel) string {
-	return "\n " + actionBar("n", "next card", "q", "quit")
+func evalResultFooter(_ RootModel) lipgloss.Style {
+	return styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(actionBar("n", "next card", "q", "quit"))
 }
 
 // scoreAccentColor returns a color matching the score (0–5).

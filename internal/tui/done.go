@@ -25,7 +25,6 @@ func updateDone(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			m.currentScreen = ScreenTopicList
-			m.cursor = 0
 			m.cards = nil
 			m.cardIndex = 0
 			m.sessionScores = nil
@@ -35,9 +34,9 @@ func updateDone(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func doneHeader(_ RootModel) string { return "" }
+func doneHeader(_ RootModel) lipgloss.Style { return lipgloss.NewStyle() } // no header on done screen
 
-func doneBody(m RootModel) string {
+func doneBody(m RootModel) lipgloss.Style {
 	seen := len(m.cards)
 	revisit := 0
 	total := 0
@@ -61,7 +60,7 @@ func doneBody(m RootModel) string {
 		val := lipgloss.NewStyle().Foreground(color).Bold(true).Render(value)
 		lbl := faintStyle.Render(strings.ToUpper(label))
 		inner := lipgloss.NewStyle().Width(14).Align(lipgloss.Center).Render(val + "\n" + lbl)
-		return borderedBox(colorBorder).Render(inner)
+		return styledBox(CardParams{BorderColor: colorBorder, Padding: []int{0, 2}}).Render(inner)
 	}
 
 	boxes := lipgloss.JoinHorizontal(lipgloss.Top,
@@ -78,9 +77,11 @@ func doneBody(m RootModel) string {
 		"",
 		boxesRow,
 	)
-	return lipgloss.Place(cardInnerW, cardInnerH, lipgloss.Center, lipgloss.Center, content)
+	return styledBox(CardParams{BgColor: colorBase}).SetString(
+		lipgloss.Place(cardInnerW, cardInnerH, lipgloss.Center, lipgloss.Center, content),
+	)
 }
 
-func doneFooter(_ RootModel) string {
-	return "\n " + actionBar("enter", "pick another topic", "q", "quit")
+func doneFooter(_ RootModel) lipgloss.Style {
+	return styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(actionBar("enter", "pick another topic", "q", "quit"))
 }

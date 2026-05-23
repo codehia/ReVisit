@@ -144,7 +144,7 @@ func topicListHeader(m RootModel) lipgloss.Style {
 	label := hintStyle.Render("Choose a topic to work on")
 	subtitle := mutedStyle.Render(fmt.Sprintf("%d cards across %d topics · use ", totalCards, len(m.topics))) +
 		purpleStyle.Render("↑↓ to move") + mutedStyle.Render(". enter to select")
-	return styledBox(CardParams{BgColor: colorBase}).SetString("\n " + label + "\n " + subtitle)
+	return styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(label + "\n" + subtitle)
 }
 
 func topicListBody(m RootModel) lipgloss.Style {
@@ -159,5 +159,5 @@ func topicListFooter(m RootModel) lipgloss.Style {
 	if item, ok := m.topicList.SelectedItem().(topicItem); ok {
 		selectedName = strings.ToLower(item.Name)
 	}
-	return styledBox(CardParams{BgColor: colorBase}).SetString("\n " + actionBar("enter", "start "+selectedName, "q", "quit"))
+	return styledBox(CardParams{BgColor: colorBase, Padding: []int{1, 1}}).SetString(actionBar("enter", "start "+selectedName, "q", "quit"))
 }

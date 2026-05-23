@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"image/color"
 
-	// "charm.land/lipgloss/v2"
 	ta "charm.land/bubbles/v2/textarea"
 	list "charm.land/bubbles/v2/list"
 	"github.com/codehia/goflash/internal/store"
@@ -40,7 +39,6 @@ type RootModel struct {
 	topicList       list.Model
 	selectedTopicID *string
 	topicName       string
-	cursor          int
 	// cards
 	cards     []store.Card
 	cardIndex int
