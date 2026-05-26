@@ -25,6 +25,12 @@ func (m RootModel) Init() tea.Cmd {
 
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case tea.KeyPressMsg:
+		if msg.String() == "q" || msg.String() == "ctrl+c" {
+			return m, tea.Quit
+		}
+
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
@@ -43,6 +49,11 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, initCards(m)
 
 	case cardsLoadedMsg:
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			m.currentScreen = ScreenError
+			return m, nil
+		}
 		m.cards = msg.cards
 		return m, nil
 
@@ -52,13 +63,22 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case EvalResultMsg:
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			m.currentScreen = ScreenError
+			return m, nil
+		}
 		m.evalResult = msg.result
 		m.sessionScores = append(m.sessionScores, msg.result.Score)
 		m.currentScreen = ScreenEvalResult
 		return m, saveAndSchedule(m)
 
 	case scheduleUpdatedMsg:
-		// TODO: surface error to user
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			m.currentScreen = ScreenError
+			return m, nil
+		}
 		return m, nil
 	}
 
@@ -73,6 +93,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updateEvalResult(msg, m)
 	case ScreenDone:
 		return updateDone(msg, m)
+	case ScreenError:
+		return updateError(msg, m)
 	default:
 		return m, nil
 	}
@@ -107,6 +129,8 @@ func screenHeader(m RootModel) lipgloss.Style {
 		return evalResultHeader(m)
 	case ScreenDone:
 		return doneHeader(m)
+	case ScreenError:
+		return errorHeader(m)
 	default:
 		return lipgloss.NewStyle()
 	}
@@ -124,6 +148,8 @@ func screenBody(m RootModel) lipgloss.Style {
 		return evalResultBody(m)
 	case ScreenDone:
 		return doneBody(m)
+	case ScreenError:
+		return errorBody(m)
 	default:
 		return lipgloss.NewStyle()
 	}
@@ -141,6 +167,8 @@ func screenFooter(m RootModel) lipgloss.Style {
 		return evalResultFooter(m)
 	case ScreenDone:
 		return doneFooter(m)
+	case ScreenError:
+		return errorFooter(m)
 	default:
 		return lipgloss.NewStyle()
 	}

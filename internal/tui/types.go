@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"image/color"
 
-	ta "charm.land/bubbles/v2/textarea"
 	list "charm.land/bubbles/v2/list"
+	ta "charm.land/bubbles/v2/textarea"
 	"github.com/codehia/goflash/internal/store"
 	"github.com/codehia/goflash/internal/types"
 )
@@ -22,6 +22,7 @@ const (
 	ScreenCardAttempt
 	ScreenEvalResult
 	ScreenDone
+	ScreenError
 )
 
 // ── RootModel ────────────────────────────────────────────────────────
@@ -49,6 +50,8 @@ type RootModel struct {
 	evalResult types.EvalResult
 	// session
 	sessionScores []int
+
+	errMsg string
 }
 
 // ── Msg types ────────────────────────────────────────────────────────

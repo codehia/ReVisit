@@ -22,7 +22,7 @@ func (t topicItem) FilterValue() string { return t.Name }
 type topicDelegate struct{ rowW int }
 
 func (d topicDelegate) Height() int                             { return 5 }
-func (d topicDelegate) Spacing() int                           { return 0 }
+func (d topicDelegate) Spacing() int                            { return 0 }
 func (d topicDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
 func (d topicDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
@@ -108,6 +108,11 @@ func initTopicList(m RootModel) tea.Cmd {
 func updateTopicList(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case topicsLoadedMsg:
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			m.currentScreen = ScreenError
+			return m, nil
+		}
 		m.topics = msg.topics
 		innerW := cardWidth - roundedBorderH
 		m.topicList = newTopicList(msg.topics, innerW, listBodyH)

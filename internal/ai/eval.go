@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/codehia/goflash/internal/types"
@@ -108,12 +107,11 @@ func makeRequest(payloadData types.RequestPayload, cfg types.Config) (types.Eval
 func Evaluate(question, correctAnswer, userAnswer string) (types.EvalResult, error) {
 	cfg, err := types.NewConfig()
 	if err != nil {
-		// sugar.Errorw("config Creation failed", "error", err)
-		os.Exit(1)
+		return types.EvalResult{}, err
 	}
 	payloadData, err := createPayload(question, correctAnswer, userAnswer)
 	if err != nil {
-		// sugar.Errorw("failed to create payload", "error", err)
+		return types.EvalResult{}, err
 	}
 	return makeRequest(payloadData, cfg)
 }

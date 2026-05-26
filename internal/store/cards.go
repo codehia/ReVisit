@@ -43,7 +43,7 @@ func GetCardsForTopic(db *sql.DB, tagId *string) ([]Card, error) {
 			table.Cards.
 				INNER_JOIN(table.CardTags, table.Cards.ID.EQ(table.CardTags.CardID)).
 				INNER_JOIN(tagTree, table.CardTags.TagID.EQ(tagID.From(tagTree))),
-		),
+		).WHERE(table.Cards.DueDate.LT_EQ(sqlite.CURRENT_TIMESTAMP())),
 	)
 
 	var modelCards []model.Cards
