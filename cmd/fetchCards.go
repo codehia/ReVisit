@@ -189,7 +189,21 @@ func writeToResultJson(path string, results []types.Response) {
 	sugar.Infow("results written successfully", "path", path)
 }
 
-func FetchCards() {
+type seedArgs struct {
+	inputFile  string
+	outputFile string
+	children   []string
+}
+
+func parseArgs(args []string) seedArgs {
+	fs := flag.NewFlagSet("fetchCards", flag.ExitOnError)
+	inputFile := fs.String("source", "source.json", "input file name")
+	outputFile := fs.String("output", "output.json", "output file name")
+	fs.Parse(args) //nolint:errcheck
+	return seedArgs{inputFile: *inputFile, outputFile: *outputFile, children: fs.Args()}
+}
+
+func FetchCards(args []string) {
 	defer logger.Sync() //nolint:errcheck
 	// CREATE CONFIG -> CAN DELETE
 	cfg, err := types.NewConfig()
@@ -197,29 +211,27 @@ func FetchCards() {
 		sugar.Errorw("config creation failed", "error", err)
 		os.Exit(1)
 	}
+	parsedArgs := parseArgs(args)
 
-	// REMOVE THIS CHILDREN LOGIC ENTIRELY.
-	children := flag.Args()
-
-	root, err := types.LoadNode("system-design-hierarchy.json")
+	root, err := types.LoadNode(parsedArgs.inputFile)
 	if err != nil {
 		sugar.Errorw("failed to read root node", "error", err)
 		os.Exit(1)
 	}
 
 	var childrenNodes []types.Node
-	if len(children) == 0 {
+	if len(parsedArgs.children) == 0 {
 		sugar.Infow("no topics specified, seeding all top-level topics", "count", len(root.Children))
 		childrenNodes = root.Children
 	} else {
-		childrenNodes = findChildrenNodes(root, children)
+		childrenNodes = findChildrenNodes(root, parsedArgs.children)
 	}
 	var leafNodes []LeafNode
 	for _, node := range childrenNodes {
 		leafNodes = append(leafNodes, getLeafNodes(node, "")...)
 	}
 	if len(leafNodes) == 0 {
-		sugar.Errorw("no matching nodes found", "args", children)
+		sugar.Errorw("no matching nodes found", "args", parsedArgs.children)
 		os.Exit(1)
 	}
 	sugar.Infow("found leaf nodes", "count", len(leafNodes))
@@ -260,5 +272,5 @@ func FetchCards() {
 		collected = append(collected, r...)
 	}
 	sugar.Infow("collection complete", "total_responses", len(collected))
-	writeToResultJson("output.json", collected)
+	writeToResultJson(parsedArgs.outputFile, collected)
 }

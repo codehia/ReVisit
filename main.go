@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
 	"log"
+	"os"
 
 	tea "charm.land/bubbletea/v2"
 	cmd "github.com/codehia/goflash/cmd"
@@ -10,14 +10,14 @@ import (
 	"github.com/codehia/goflash/internal/tui"
 )
 
-func runCommand(commandString *string) {
-	switch *commandString {
-	case "seed":
-		cmd.FetchCards()
-	case "import":
+func runCommand(commandString string) {
+	switch commandString {
+	case "fetchCards":
+		cmd.FetchCards(os.Args[2:])
+	case "storeCards":
 		cmd.StoreCards()
 	default:
-		log.Fatalf("invalid command %s. Only allowed seed and import", *commandString)
+		log.Fatalf("invalid command %s. Only allowed seed and import", commandString)
 	}
 }
 
@@ -57,12 +57,8 @@ func main() {
 		2. Get a flat list of cards for the selected topics (ordered by due_date)
 		3. Show Card -> Accept Answer -> AI eval -> show feedback -> sm2 update -> next card
 	*/
-
-	commandString := flag.String("cmd", "", "command to run (seed, import)")
-	flag.Parse()
-
-	if *commandString != "" {
-		runCommand(commandString)
+	if len(os.Args) > 1 {
+		runCommand(os.Args[1])
 	} else {
 		runTUI()
 	}
