@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"flag"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/codehia/goflash/internal/ai"
 	"github.com/codehia/goflash/internal/types"
+	"github.com/zendev-sh/goai"
 	"go.uber.org/zap"
 )
 
@@ -25,18 +27,25 @@ var (
 	assistantPrompt string
 )
 
-type LeafNode struct {
-	types.Node
-	Path string
+type Leaf struct {
+	Name       string
+	Notes      string
+	ParentPath string
+}
+
+type seedArgs struct {
+	inputFile  string
+	outputFile string
+	children   []string
 }
 
 type entriesWrapper struct {
 	Entries []types.Response `json:"entries"`
 }
 
-func getLeafNodes(node types.Node, path string) []LeafNode {
+func collectLeaves(node types.Node, path string) []Leaf {
 	if len(node.Children) == 0 {
-		return []LeafNode{{Node: node, Path: path}}
+		return []Leaf{{Name: node.Name, Notes: node.Notes, ParentPath: path}}
 	}
 	var childPath string
 	if path == "" {
@@ -44,32 +53,21 @@ func getLeafNodes(node types.Node, path string) []LeafNode {
 	} else {
 		childPath = path + " > " + node.Name
 	}
-	var leaves []LeafNode
+	var leaves []Leaf
 	for _, child := range node.Children {
-		leaves = append(leaves, getLeafNodes(child, childPath)...)
+		leaves = append(leaves, collectLeaves(child, childPath)...)
 	}
 	return leaves
 }
 
-func findChildrenNodes(node types.Node, childrenNames []string) []types.Node {
-	var childrenNodes []types.Node
-	for _, child := range node.Children {
-		if slices.Contains(childrenNames, child.Name) {
-			childrenNodes = append(childrenNodes, child)
-		}
-	}
-	return childrenNodes
-}
-
-func createUserMessage(leaf LeafNode) (types.APIMessage, error) {
-	content := fmt.Sprintf(`
+func createUserMessage(leaf Leaf) string {
+	return fmt.Sprintf(`
 		Generate flashcards for this concept. Fully decompose it into atomic ideas and generate one card per atomic idea.
 		Use the tag and tag_path exactly as given - do not modify them or create new tags.
 
 		Concept: %s
 		Tag path: %s
-		Anchor: %s`, leaf.Name, leaf.Path, leaf.Notes)
-	return types.NewMessage(content, "user")
+		Anchor: %s`, leaf.Name, leaf.ParentPath, leaf.Notes)
 }
 
 func createFakeUserMessage() (types.APIMessage, error) {
@@ -82,28 +80,6 @@ func createAssistantMessage() (types.APIMessage, error) {
 
 func createSystemMessage() (types.APIMessage, error) {
 	return types.NewMessage(systemPrompt, "system")
-}
-
-func createPayload(node LeafNode) (types.RequestPayload, error) {
-	systemMessage, err := createSystemMessage()
-	if err != nil {
-		return types.RequestPayload{}, err
-	}
-	userMessage, err := createUserMessage(node)
-	if err != nil {
-		return types.RequestPayload{}, err
-	}
-	fakeUserMessage, err := createFakeUserMessage()
-	if err != nil {
-		return types.RequestPayload{}, err
-	}
-	assistantMessage, err := createAssistantMessage()
-	if err != nil {
-		return types.RequestPayload{}, err
-	}
-
-	messages := []types.APIMessage{systemMessage, fakeUserMessage, assistantMessage, userMessage}
-	return types.NewRequestPayload(messages)
 }
 
 func makeRequest(payloadData types.RequestPayload, cfg types.Config, results chan<- []types.Response, retry chan<- types.RequestPayload, wg *sync.WaitGroup) {
@@ -189,12 +165,6 @@ func writeToResultJson(path string, results []types.Response) {
 	sugar.Infow("results written successfully", "path", path)
 }
 
-type seedArgs struct {
-	inputFile  string
-	outputFile string
-	children   []string
-}
-
 func parseArgs(args []string) seedArgs {
 	fs := flag.NewFlagSet("fetchCards", flag.ExitOnError)
 	inputFile := fs.String("source", "source.json", "input file name")
@@ -205,72 +175,39 @@ func parseArgs(args []string) seedArgs {
 
 func FetchCards(args []string) {
 	defer logger.Sync() //nolint:errcheck
-	// CREATE CONFIG -> CAN DELETE
-	cfg, err := types.NewConfig()
+
+	model, err := ai.GetModel()
 	if err != nil {
-		sugar.Errorw("config creation failed", "error", err)
-		os.Exit(1)
+		sugar.Errorw("failed to get the model", "error", err)
 	}
 	parsedArgs := parseArgs(args)
-
+	// Get the nodes based on the parsedArgs
 	root, err := types.LoadNode(parsedArgs.inputFile)
 	if err != nil {
 		sugar.Errorw("failed to read root node", "error", err)
 		os.Exit(1)
 	}
 
-	var childrenNodes []types.Node
-	if len(parsedArgs.children) == 0 {
-		sugar.Infow("no topics specified, seeding all top-level topics", "count", len(root.Children))
-		childrenNodes = root.Children
-	} else {
-		childrenNodes = findChildrenNodes(root, parsedArgs.children)
-	}
-	var leafNodes []LeafNode
-	for _, node := range childrenNodes {
-		leafNodes = append(leafNodes, getLeafNodes(node, "")...)
-	}
-	if len(leafNodes) == 0 {
-		sugar.Errorw("no matching nodes found", "args", parsedArgs.children)
-		os.Exit(1)
-	}
-	sugar.Infow("found leaf nodes", "count", len(leafNodes))
-
-	results := make(chan []types.Response)
-	retry := make(chan types.RequestPayload)
-
-	var wg sync.WaitGroup
-	for _, node := range leafNodes {
-		payload, err := createPayload(node)
-		if err != nil {
-			sugar.Errorw("failed to create payload", "node", node.Name, "error", err)
-			continue
+	var leaves []Leaf
+	for _, child := range root.Children {
+		if len(parsedArgs.children) == 0 || slices.Contains(parsedArgs.children, child.Name) {
+			leaves = append(leaves, collectLeaves(child, "")...)
 		}
-		sugar.Infow("launching request", "node", node.Name)
-		wg.Add(1) // only count goroutines that actually launch
-		go makeRequest(payload, cfg, results, retry, &wg)
 	}
-
-	go func() {
-		wg.Wait()
-		sugar.Infow("all requests done, closing channels")
-		close(results)
-		close(retry)
-	}()
-
-	go func() {
-		for r := range retry {
-			sugar.Infow("retrying request", "model", r.Model)
-			// TODO: no retry limit — a permanently failing request retries forever.
-			// Fix: track attempt count per payload and drop after N retries.
-			go makeRequest(r, cfg, results, retry, &wg)
-		}
-	}()
 
 	var collected []types.Response
-	for r := range results {
-		collected = append(collected, r...)
+	for _, leaf := range leaves {
+		result, err := goai.GenerateObject[entriesWrapper](context.Background(), model,
+			goai.WithSystem(systemPrompt),
+			goai.WithMessages(
+				goai.UserMessage(fakeUserPrompt),
+				goai.AssistantMessage(assistantPrompt),
+				goai.UserMessage(createUserMessage(leaf)),
+			), goai.WithMaxRetries(3))
+		if err != nil {
+			sugar.Warnw("request failed", "leaf", leaf.Name, "error", err)
+			continue
+		}
+		collected = append(collected, result.Object.Entries...)
 	}
-	sugar.Infow("collection complete", "total_responses", len(collected))
-	writeToResultJson(parsedArgs.outputFile, collected)
 }
