@@ -16,8 +16,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/codehia/goflash/internal/scheduler"
-	"github.com/codehia/goflash/internal/store"
+	"github.com/codehia/ReVisit/internal/scheduler"
+	"github.com/codehia/ReVisit/internal/store"
 )
 
 func updateEvalResult(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {

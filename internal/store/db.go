@@ -38,7 +38,7 @@ func (s *Store) DB() *sql.DB { return s.db }
 func Open() (*sql.DB, error) {
 	databaseName := os.Getenv("DATABASE_NAME")
 	if databaseName == "" {
-		databaseName = "goflash.db"
+		databaseName = "ReVisit.db"
 	}
 	s, err := New(databaseName)
 	if err != nil {

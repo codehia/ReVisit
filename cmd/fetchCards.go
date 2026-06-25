@@ -9,8 +9,8 @@ import (
 	"os"
 	"slices"
 
-	"github.com/codehia/goflash/internal/ai"
-	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/ReVisit/internal/ai"
+	"github.com/codehia/ReVisit/internal/types"
 	"github.com/zendev-sh/goai"
 	"go.uber.org/zap"
 )

@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/ReVisit/internal/types"
 	"github.com/zendev-sh/goai"
 	"github.com/zendev-sh/goai/provider"
 )

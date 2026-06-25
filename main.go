@@ -5,9 +5,9 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	cmd "github.com/codehia/goflash/cmd"
-	"github.com/codehia/goflash/internal/store"
-	"github.com/codehia/goflash/internal/tui"
+	cmd "github.com/codehia/ReVisit/cmd"
+	"github.com/codehia/ReVisit/internal/store"
+	"github.com/codehia/ReVisit/internal/tui"
 )
 
 func runCommand(commandString string) {

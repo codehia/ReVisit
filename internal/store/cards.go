@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/codehia/goflash/internal/db/model"
-	"github.com/codehia/goflash/internal/db/table"
+	"github.com/codehia/ReVisit/internal/db/model"
+	"github.com/codehia/ReVisit/internal/db/table"
 	"github.com/go-jet/jet/v2/sqlite"
 )
 

@@ -9,11 +9,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/codehia/goflash/internal/db/model"
-	"github.com/codehia/goflash/internal/db/table"
-	"github.com/codehia/goflash/internal/store"
-	"github.com/codehia/goflash/internal/types"
-	"github.com/codehia/goflash/internal/utils"
+	"github.com/codehia/ReVisit/internal/db/model"
+	"github.com/codehia/ReVisit/internal/db/table"
+	"github.com/codehia/ReVisit/internal/store"
+	"github.com/codehia/ReVisit/internal/types"
+	"github.com/codehia/ReVisit/internal/utils"
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 )

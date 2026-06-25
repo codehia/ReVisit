@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/ReVisit/internal/types"
 	"go.uber.org/zap"
 )
 

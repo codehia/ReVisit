@@ -1,10 +1,10 @@
-# goflash
+# ReVisit
 
 > AI-evaluated spaced-repetition flashcards in your terminal.
 
 ![demo](demo.gif)
 
-Most flashcard tools make you rate yourself, which is unreliable and easy to game. goflash feeds your answers to an AI that scores them objectively (0-5), then uses SM-2 spaced repetition to resurface cards at the right time. Everything runs in the terminal and stores locally in SQLite.
+Most flashcard tools make you rate yourself, which is unreliable and easy to game. ReVisit feeds your answers to an AI that scores them objectively (0-5), then uses SM-2 spaced repetition to resurface cards at the right time. Everything runs in the terminal and stores locally in SQLite.
 
 ---
 
@@ -29,8 +29,8 @@ Most flashcard tools make you rate yourself, which is unreliable and easy to gam
 ## Quick Start
 
 ```bash
-git clone https://github.com/codehia/goflash.git
-cd goflash
+git clone https://github.com/codehia/ReVisit.git
+cd ReVisit
 cp .envrc.example .envrc
 # edit .envrc and set DEEPSEEK_API_KEY
 direnv allow
@@ -82,7 +82,7 @@ The repo ships with a pre-seeded system design database (1996 cards) so you can 
 ## Architecture
 
 ```
-goflash/
+ReVisit/
 ├── cmd/
 │   ├── seed/       reads topic JSON -> calls DeepSeek -> writes output.json
 │   └── import/     reads output.json -> upserts cards + tags into SQLite

@@ -3,7 +3,7 @@ package ai
 import (
 	"fmt"
 
-	"github.com/codehia/goflash/internal/utils"
+	"github.com/codehia/ReVisit/internal/utils"
 
 	"github.com/zendev-sh/goai/provider"
 	"github.com/zendev-sh/goai/provider/anthropic"

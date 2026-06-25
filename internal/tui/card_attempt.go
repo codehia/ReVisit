@@ -11,7 +11,7 @@ Footer: action bar (ctrl+s / esc)
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/codehia/goflash/internal/ai"
+	"github.com/codehia/ReVisit/internal/ai"
 )
 
 func updateCardAttempt(msg tea.Msg, m RootModel) (tea.Model, tea.Cmd) {

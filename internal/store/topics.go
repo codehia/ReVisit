@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/codehia/goflash/internal/db/model"
-	"github.com/codehia/goflash/internal/db/table"
-	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/ReVisit/internal/db/model"
+	"github.com/codehia/ReVisit/internal/db/table"
+	"github.com/codehia/ReVisit/internal/types"
 	"github.com/go-jet/jet/v2/sqlite"
 )
 

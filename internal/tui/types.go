@@ -6,8 +6,8 @@ import (
 
 	list "charm.land/bubbles/v2/list"
 	ta "charm.land/bubbles/v2/textarea"
-	"github.com/codehia/goflash/internal/store"
-	"github.com/codehia/goflash/internal/types"
+	"github.com/codehia/ReVisit/internal/store"
+	"github.com/codehia/ReVisit/internal/types"
 )
 
 // ── Screen ───────────────────────────────────────────────────────────

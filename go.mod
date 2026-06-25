@@ -1,4 +1,4 @@
-module github.com/codehia/goflash
+module github.com/codehia/ReVisit
 
 go 1.26.1
 
